@@ -1,0 +1,13 @@
+/*a.twispay-logs {*/
+    /*line-height: 150%;*/
+    /*color: #39569b;*/
+    /*font-size: 16px;*/
+/*}*/
+a.twispay-clean, a.twispay-logs {
+    line-height: 150%;
+    color: #eb8e36;
+    font-size: 16px;
+}
+form[action*="module=twispay"] td.infoBoxContent{
+    line-height: 160%;
+}
