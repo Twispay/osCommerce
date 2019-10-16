@@ -1,3 +1,7 @@
+/**
+ * @author   Twistpay
+ * @version  1.0.1
+ */
 $(window).load(function(){
     var url = new URL(window.location.href);
     var action = url.searchParams.get("action");
@@ -31,21 +35,16 @@ $(window).load(function(){
                 $(textbox).attr('readonly','readonly').attr('rows','4');
                 delint4 = true;
             }
-
-
             if(delint1 === true && delint2 === true && delint3 === true && delint4 === true){
                 clearInterval(disable_interval);
             }
         },500);
     }
-
 });
 
-function logs(){
-    console.log('log');
-}
 function clean(){
-    var url = '/ext/modules/payment/twispay/twispay_actions.php'
+    var currentLocation = window.location.pathname;
+    var url = currentLocation.substring(0, currentLocation.lastIndexOf('/')+1)+'ext/modules/payment/twispay/twispay_actions.php';
     setTimeout(function(){
         if(window.confirm("Are you sure you want to delete unfinished twispay payments?\nProcess is not reversible !!!")){
             $.ajax({
@@ -61,8 +60,6 @@ function clean(){
                     console.log(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
                 }
             });
-        } else {
-            $(parent).css('opacity','1');
         }
     },50);
 }

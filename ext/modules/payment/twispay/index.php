@@ -1,7 +1,5 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: home
- * Date: 9/11/17
- * Time: 09:56
+ * @author   Twistpay
+ * @version  1.0.1
  */
