@@ -33,8 +33,8 @@ if (! class_exists('Twispay_Thankyou')) :
                 }
             }
             $page_to_redirect = tep_href_link($page_to_redirect, '', 'SSL');
-            // echo '<meta http-equiv="refresh" content="1;url='. $page_to_redirect.'" />';
-            // header('Refresh: 1;url=' . $page_to_redirect);
+            echo '<meta http-equiv="refresh" content="1;url='. $page_to_redirect.'" />';
+            header('Refresh: 1;url=' . $page_to_redirect);
         }
     }
 endif; /* End if class_exists. */

@@ -46,14 +46,14 @@ define('GENERAL_ERROR_INVALID_ORDER_TEXT',' Invalid order.');
 // define('CHECKOUT_NOTICE_CYCLES_NUMBER_TEXT','Trial period can only have one payment. If multiple trial duration is configured, the periods and payments will be summed up and only one payment will be performed.');
 
 /* Order Notice */
-define('A_ORDER_FAILED_NOTICE_TEXT','Twispay payment failed');
-define('A_ORDER_HOLD_NOTICE_TEXT','Twispay payment is on hold');
-define('A_ORDER_VOID_NOTICE_TEXT','Twispay payment was voided #');
-define('A_ORDER_CHARGEDBACK_NOTICE_TEXT','Twispay payment was charged_back #');
-define('A_ORDER_REFUNDED_NOTICE_TEXT','Twispay payment was refunded #');
-define('A_ORDER_REFUNDED_REQUESTED_NOTICE_TEXT','Twispay refund requested');
-define('A_ORDER_PAID_NOTICE_TEXT','Paid Twispay #');
-define('A_ORDER_CANCELED_NOTICE_TEXT','Twispay payment was canceled');
+define('ORDER_FAILED_NOTICE_TEXT','Twispay payment failed');
+define('ORDER_HOLD_NOTICE_TEXT','Twispay payment is on hold');
+define('ORDER_VOID_NOTICE_TEXT','Twispay payment was voided #');
+define('ORDER_CHARGEDBACK_NOTICE_TEXT','Twispay payment was charged_back #');
+define('ORDER_REFUNDED_NOTICE_TEXT','Twispay payment was refunded #');
+define('ORDER_REFUNDED_REQUESTED_NOTICE_TEXT','Twispay refund requested');
+define('ORDER_PAID_NOTICE_TEXT','Paid Twispay #');
+define('ORDER_CANCELED_NOTICE_TEXT','Twispay payment was canceled');
 
 /* LOG insertor */
 define('LOG_REFUND_RESPONSE_TEXT','[RESPONSE]: Refund operation data: ');

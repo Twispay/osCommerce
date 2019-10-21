@@ -82,29 +82,35 @@ if (! class_exists('Twispay_Response')) :
             if (!$tw_response) {
                 return false;
             }
-
+            /** Check if transaction status exists */
             if (empty($tw_response['status']) && empty($tw_response['transactionStatus'])) {
                 $tw_errors[] = LOG_ERROR_EMPTY_STATUS_TEXT;
             }
-
+            /** Check if identifier exists */
             if (empty($tw_response['identifier'])) {
                 $tw_errors[] = LOG_ERROR_EMPTY_IDENTIFIER_TEXT;
             }
-
+            /** Check if external order id exists */
             if (empty($tw_response['externalOrderId'])) {
                 $tw_errors[] = LOG_ERROR_EMPTY_EXTERNAL_TEXT;
             }
-
+            /** Check if transaction id exists */
             if (empty($tw_response['transactionId'])) {
                 $tw_errors[] = LOG_ERROR_EMPTY_TRANSACTION_TEXT;
             }
-
+            /** Check if status is valid */
+            if (!in_array($data['status'], Twispay_Status_Updater::$RESULT_STATUSES)) {
+                $tw_errors[] = LOG_ERROR_WRONG_STATUS_TEXT . $data['status'];
+            }
+            /** Check for error and log them all */
             if (sizeof($tw_errors)) {
                 foreach ($tw_errors as $err) {
                     Twispay_Logger::log($err);
                 }
                 return false;
+            /** If the response is valid */
             } else {
+                /** Prepare the data object related to transaction table format */
                 $data = ['order_id'         => (int)$tw_response['externalOrderId']
                       , 'status'          => $tw_response['status']
                       , 'invoice'         => ''
@@ -118,15 +124,9 @@ if (! class_exists('Twispay_Response')) :
                       , 'currency'        => $tw_response['currency']
                       , 'timestamp'       => $tw_response['timestamp']];
 
+                /** Insert the new transaction */
                 Twispay_Transactions::insertTransaction($data);
                 Twispay_Logger::log(LOG_OK_RESPONSE_DATA_TEXT . json_encode($data));
-
-                // TODO
-                if (!in_array($data['status'], Twispay_Status_Updater::$RESULT_STATUSES)) {
-                    Twispay_Logger::log(LOG_ERROR_WRONG_STATUS_TEXT . $data['status']);
-                    return false;
-                }
-
                 Twispay_Logger::log(LOG_OK_VALIDATING_COMPLETE_TEXT . $data['id_cart']);
                 return true;
             }

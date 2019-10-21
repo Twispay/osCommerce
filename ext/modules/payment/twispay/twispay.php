@@ -58,7 +58,8 @@ if(!empty($_POST)){
     /** Check if transaction already exist */
     if (Twispay_Transactions::checkTransaction($decrypted['transactionId'])) {
         Twispay_Logger::log(LOG_ERROR_TRANSACTION_EXIST_TEXT . $decrypted['transactionId']);
-        Oscommerce_Order::reset_cart();
+        global $cart;
+        $cart->reset(true);
         Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
         die();
     }

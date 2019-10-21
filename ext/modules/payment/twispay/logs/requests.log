@@ -1,1 +1,0 @@
-[2019-10-16 13:32:41] LOG_REFUND_RESPONSE_TEXT{"status":"refund-ok","rawdata":{"code":200,"message":"Success","data":{"transactionId":339707}},"transactionId":"339703","externalOrderId":"83","refunded":1}
