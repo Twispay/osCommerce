@@ -1,24 +1,27 @@
 <?php
 /**
- * @author   Twistpay
+ * @author   Twispay
  * @version  1.0.1
  */
 
 chdir('../../../../');
 require('includes/application_top.php');
+require(DIR_WS_INCLUDES.'template_top.php');
+require('../includes/languages/' . $language . '/modules/payment/twispay.php');
+
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Transactions.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
-$languages = tep_get_languages();
-/** Include language */
-$languages_array = array();
-$languages_selected = DEFAULT_LANGUAGE;
-for ($i = 0, $n = sizeof($languages); $i < $n; $i++) {
-    $languages_array[] = array('id' => $languages[$i]['code'],
-        'text' => $languages[$i]['name']);
-    if ($languages[$i]['directory'] == $language) {
-        $languages_selected = $languages[$i]['code'];
-    }
+
+/** Get catalog directory */
+if (getenv('HTTPS') == 'on') { // We are loading an SSL page
+    $admin_dir = HTTPS_SERVER.DIR_WS_HTTPS_ADMIN;
+} else {
+    $admin_dir = HTTP_SERVER.DIR_WS_ADMIN;
 }
-require(DIR_WS_INCLUDES . 'template_top.php');
+
+/** Include module css/js files */
+echo '<script type="text/javascript" src="'.$admin_dir.'/ext/modules/payment/twispay/js/twispay_transactions.js"></script>';
+echo '<link rel="stylesheet" type="text/css" href="'.$admin_dir.'/ext/modules/payment/twispay/css/twispay.css"/>';
 
 /** Get query field 'id' of each row
  *
@@ -27,7 +30,8 @@ require(DIR_WS_INCLUDES . 'template_top.php');
  * @return array([key => value]) - Query result
  *
  */
-function getids($query){
+function getids($query)
+{
     $data = array();
     if(!empty(tep_db_num_rows($query))){
         while ($dat = tep_db_fetch_array($query)){
@@ -41,17 +45,19 @@ function getids($query){
  *
  * @param int query - The query string to be called
  *
- * @return array([key => value]) - Query result
+ * @return array(stdObject) - Query result
  *
  */
-function getdata($query){
+function getdata($query)
+{
     $data = array();
     if(!empty(tep_db_num_rows($query))){
         while ($dat = tep_db_fetch_array($query)){
-            array_push($data, json_decode(json_encode($dat)));
+          /** Append fetched value to data array */
+          array_push($data, json_decode(json_encode($dat)) /** Cast to stdObject type */);
         }
     }
-    return json_decode(json_encode($data));
+    return $data;
 }
 
 /** Remove argument from query string
@@ -59,10 +65,11 @@ function getdata($query){
  * @param int url - The query string
  * @param int which_argument - The GET argument to be removed
  *
- * @return array([key => value]) - Query result
+ * @return string - Resulted query
  *
  */
-function remove_query($url, $which_argument=false){
+function remove_query($url, $which_argument=false)
+{
     return preg_replace('/'. ($which_argument ? '(\&|)'.$which_argument.'(\=(.*?)((?=&(?!amp\;))|$)|(.*?)\b)' : '(\?.*)').'/i' , '', $url);
 }
 
@@ -71,31 +78,36 @@ function remove_query($url, $which_argument=false){
 
 /** Transaction status */
 $statuses = Twispay_Status_Updater::$RESULT_STATUSES;
+/** Default status | All statuses */
 $selected_status = '0';
 if (isset($_GET["f_status"])) {
+    /** Check if selected status is valid */
     if (in_array($_GET["f_status"], $statuses)) {
+      /** Set the valid status */
       $selected_status = $_GET["f_status"];
     }
 }
 
-/** Sortable columns name */
-$query = tep_db_query("SHOW COLUMNS FROM `twispay_transactions`");
 $transaction_columns = array();
-foreach (getdata($query) as $dt) {
+/** Extract the columns name of the transactions tale. */
+foreach (getdata(tep_db_query("SHOW COLUMNS FROM `".Twispay_Transactions::$TABLE_TWISPAY_TRANSACTIONS."`")) as $dt) {
     array_push($transaction_columns, $dt->Field);
 }
 
+/** Default value for sort column | No sort column */
 $sort_col = '0';
+/** Default value for sort order | No sort order */
 $sort_order = '0';
+/** Check if any sorting must be applied */
 if (isset($_GET["sort"])) {
     $sort = $_GET["sort"];
     if (strpos($sort, '_') !== false) {
         $sort = explode("_", $sort);
-        /** Validate GET value */
+        /** Check if sort column value is valid */
         if(in_array($sort[0], $transaction_columns)){
           $sort_col = $sort[0];
         }
-        /** Validate GET value */
+        /** Check if sort order value is valid */
         if(in_array($sort[1], array("ASC","DESC"))){
           $sort_order = $sort[1];
         }
@@ -105,11 +117,13 @@ if (isset($_GET["sort"])) {
 /** Customers */
 $customers = getdata(tep_db_query("SELECT `customers_id` AS id, CONCAT_WS(' ',`customers_firstname`,`customers_lastname`) AS name, `customers_email_address` AS email FROM `customers`"));
 $customer_ids = getids(tep_db_query("SELECT `customers_id` AS id FROM `customers`"));
+/** Default value for sort column | All Customers*/
 $selected_customer = '0';
+/** Extracting and Validating selected customer, if any. */
 $selected_customer = (!empty($_GET['id']) && in_array($_GET['id'], $customer_ids)) ? $_GET['id'] : '0';
 
 /** Create transaction query */
-$query_transactions = "SELECT * from `twispay_transactions`";
+$query_transactions = "SELECT * from `".Twispay_Transactions::$TABLE_TWISPAY_TRANSACTIONS."`";
 if($selected_customer!='0' || $selected_status!='0'){
   $query_transactions .= " WHERE ";
 }
@@ -128,9 +142,10 @@ if($sort_col!='0' && $sort_order!='0'){
     $query_transactions .= " ORDER BY `date` DESC";
 }
 
-$records = (!empty(MODULE_PAYMENT_TWISPAY_PAGINATION) && is_numeric(MODULE_PAYMENT_TWISPAY_PAGINATION) && !(strpos($_POST['numar'][$i],'.')>-1 || strpos($_POST['numar'][$i],',')>-1)) ? (int)MODULE_PAYMENT_TWISPAY_PAGINATION : 20 ;
+/** Extract number of items per page and the page number. */
+$records = (!empty(MODULE_PAYMENT_TWISPAY_PAGINATION) && is_numeric(MODULE_PAYMENT_TWISPAY_PAGINATION)) ? (int)MODULE_PAYMENT_TWISPAY_PAGINATION : 20 ;
 $option_page = (!empty($_GET['option_page'])) ? $_GET['option_page'] : 1;
-$options_split = new splitPageResults($option_page, $records, $query_transactions, $options_query_numrows);
+$options_split = new splitPageResults($option_page /** passed by reference */, $records, $query_transactions /** passed by reference */, $options_query_numrows /** passed by reference */);
 $transactions = getdata(tep_db_query($query_transactions));
 
 ?>
@@ -138,24 +153,24 @@ $transactions = getdata(tep_db_query($query_transactions));
     <div class="container-fluid">
         <div class="panel panel-default">
             <div class="panel-heading">
-                <h2 class="panel-title">Twispay Transactions</h2>
+                <h2 class="panel-title"><?= MODULE_PAYMENT_TWISPAY_TRANSACTIONS_TITLE_TEXT ?></h2>
                 <div class="trans-filter pull-right">
                     <select class="trans-status">
-                        <option value="0" <?php if($selected_status=='0'){ ?> selected="selected"<?php } ?>>All Statuses</option>
+                        <option value="0" <?php if($selected_status=='0'){ ?> selected="selected"<?php } ?>><?= MODULE_PAYMENT_TWISPAY_ALLSTATUSES_TEXT ?></option>
                         <?php foreach($statuses as $status) {?>
                           <option value="<?=$status?>" <?php if($selected_status==$status){ ?>selected="selected"<?php } ?> title="<?=$status?>"><?=$status?></option>
                         <?php } ?>
                     </select>
                     <select class="trans-customers">
-                        <option value="0" <?php if($selected_customer=='0'){ ?> selected="selected"<?php } ?>>All Customers</option>
+                        <option value="0" <?php if($selected_customer=='0'){ ?> selected="selected"<?php } ?>><?= MODULE_PAYMENT_TWISPAY_ALLCUSTOMERS_TEXT ?></option>
                         <?php
                         foreach($customers as $customer) {
                             ?>
-                            <option value="<?php echo $customer->id; ?>"
+                            <option value="<?= $customer->id; ?>"
                                 <?php if($selected_customer==$customer->id) { ?>
                                     selected="selected"
                                 <?php } ?>
-                                    title="<?php echo $customer->email; ?>"><?php echo $customer->name; ?>
+                                    title="<?= $customer->email; ?>"><?= $customer->name; ?>
                             </option>
                             <?php
                         }
@@ -167,57 +182,54 @@ $transactions = getdata(tep_db_query($query_transactions));
                 <?php
                 if(empty($transactions)) {
                     ?>
-                    <div class="nodata">No transactions</div>
+                    <div class="nodata"><?= MODULE_PAYMENT_TWISPAY_NOTRANSACTIONS_TEXT ?></div>
                     <?php
                 } else {
                 ?>
                 <table class="twispay-logs" cellpading="10px" cellspacing="0" width="100%" border="1">
                     <thead>
                     <tr>
-                        <th colspan="2" class="big-border">Website</th>
-                        <th colspan="10">Twispay</th>
+                        <th colspan="2" class="big-border"><?= MODULE_PAYMENT_TWISPAY_WEBSITE_TEXT ?></th>
+                        <th colspan="10"><?= MODULE_PAYMENT_TWISPAY_TWISPAY_TEXT ?></th>
                     </tr>
                     <tr>
-                        <th>User Id</th>
-                        <th class="sortable big-border" data-val="orderId">Order Id</th>
-                        <th>Customer Id</th>
-                        <th >Order Id</th>
-                        <th>Card Id</th>
-                        <th class="sortable" data-val="transactionId">Transaction Id</th>
-                        <th>Status</th>
-                        <th>Amount</th>
-                        <th>Currency</th>
-                        <th class="sortable desc" data-val="date">Date</th>
-                        <th>Refund Date</th>
-                        <th>Refund</th>
+                        <th><?= MODULE_PAYMENT_TWISPAY_USERID_TEXT ?></th>
+                        <th class="sortable big-border" data-val="orderId"><?= MODULE_PAYMENT_TWISPAY_ORDERID_TEXT ?></th>
+                        <th><?= MODULE_PAYMENT_TWISPAY_CUSTOMERID_TEXT ?></th>
+                        <th ><?= MODULE_PAYMENT_TWISPAY_ORDERID_TEXT ?></th>
+                        <th><?= MODULE_PAYMENT_TWISPAY_CARDID_TEXT ?></th>
+                        <th class="sortable" data-val="transactionId"><?= MODULE_PAYMENT_TWISPAY_TRANSACTION_TEXT ?></th>
+                        <th><?= MODULE_PAYMENT_TWISPAY_STATUS_TEXT ?></th>
+                        <th><?= MODULE_PAYMENT_TWISPAY_AMOUNT_TEXT ?></th>
+                        <th><?= MODULE_PAYMENT_TWISPAY_CURRENCY_TEXT ?></th>
+                        <th class="sortable desc" data-val="date"><?= MODULE_PAYMENT_TWISPAY_DATE_TEXT ?></th>
+                        <th><?= MODULE_PAYMENT_TWISPAY_REFUND_TEXT ?></th>
                     </tr>
                     </thead>
                     <tbody>
 
                     <?php
+
                     foreach($transactions as $tran) {
                         ?>
                         <tr>
-                            <td><?php echo $tran->identifier; ?></td>
-                            <td class="big-border"><?php echo $tran->order_id; ?></td>
-                            <td><?php echo $tran->customerId; ?></td>
-                            <td><?php echo $tran->orderId; ?></td>
-                            <td><?php echo $tran->cardId; ?></td>
-                            <td><?php echo $tran->transactionId; ?></td>
-                            <td><?php echo $tran->status; ?></td>
-                            <td><?php echo $tran->amount; ?></td>
-                            <td><?php echo $tran->currency; ?></td>
-                            <td><?php echo $tran->date; ?></td>
-                            <td><?php if($tran->status==Twispay_Status_Updater::$RESULT_STATUSES['REFUND_REQUESTED']){ echo $tran->refund_date; }?></td>
-                            <td><?php if($tran->status==Twispay_Status_Updater::$RESULT_STATUSES['COMPLETE_OK']){ ?>
-                                    <img src="images/icons/cross.gif" class="refund fa fa-times red"
-                                         aria-hidden="true"
-                                         data-customerid="<?php echo $tran->identifier; ?>"
-                                         data-transid="<?php echo $tran->transactionId; ?>"
-                                         data-orderid="<?php echo $tran->order_id; ?>"
-                                         data-store="<?php echo $tran->store_id; ?>"
-                                         data-sendto="<?php echo $tran->sendto; ?>"
-                                         data-billto="<?php echo $tran->billto; ?>" />
+                            <td><?= $tran->identifier; ?></td>
+                            <td class="big-border"><?= $tran->order_id; ?></td>
+                            <td><?= $tran->customerId; ?></td>
+                            <td><?= $tran->orderId; ?></td>
+                            <td><?= $tran->cardId; ?></td>
+                            <td><?= $tran->transactionId; ?></td>
+                            <td><?= $tran->status; ?></td>
+                            <td><?= $tran->amount; ?></td>
+                            <td><?= $tran->currency; ?></td>
+                            <td><?= $tran->date; ?></td>
+                            <td data-popup-message="<?= sprintf(MODULE_PAYMENT_TWISPAY_REFUND_NOTICE_TEXT,$tran->transactionId); ?>"
+                            data-amount-message="<?= MODULE_PAYMENT_TWISPAY_REFUND_AMOUNT_NOTICE_TEXT ?>"
+                            data-trans-amount="<?= $tran->amount; ?>"
+                            data-transid="<?= $tran->transactionId; ?>"
+                            data-refunded-amount="<?= $tran->refunded_amount; ?>"><?php if($tran->status==Twispay_Status_Updater::$RESULT_STATUSES['COMPLETE_OK'] || $tran->status==Twispay_Status_Updater::$RESULT_STATUSES['PARTIAL_REFUNDED']){ ?>
+                                    <input type="number" name="amount" min="0" max="<?= $tran->amount - $tran->refunded_amount; ?>" style="min-width:50px;top:0">
+                                    <img src="images/icons/cross.gif" class="refund fa fa-times red" aria-hidden="true"/>
                                 <?php } ?>
                             </td>
                         </tr>
@@ -228,213 +240,12 @@ $transactions = getdata(tep_db_query($query_transactions));
                 </table>
                 <div class="twispay-pagination">
                     <?php
-                    echo $options_split->display_links($options_query_numrows, $records, MAX_DISPLAY_PAGE_LINKS, $option_page, remove_query($_SERVER['QUERY_STRING'],"option_page"), 'option_page');
+                      echo $options_split->display_links($options_query_numrows, $records, MAX_DISPLAY_PAGE_LINKS, $option_page, remove_query($_SERVER['QUERY_STRING'],"option_page"), 'option_page');
                     }?>
                 </div>
             </div>
         </div>
     </div>
-    <script type="text/javascript">
-        /** FILTERS START */
-        /** Change listener for filters - customer selector */
-        $(document).on('change','select.trans-customers',function(){
-          var f_val = $(this).val();
-          window.location.href = updateQueryStringParameter(window.location.href, "id", f_val);
-        });
-
-        /** Change listener for filters - status selector */
-        $(document).on('change', 'select.trans-status', function() {
-          var f_val = $(this).val();
-          window.location.href = updateQueryStringParameter(window.location.href, "f_status", f_val);
-        });
-
-        /** Read sort parameter from GET and set the buttons state */
-        $(function() {
-          var GET_sort = $.urlParam('sort');
-          var GET_sort_order = "";
-          var GET_sort_field = "";
-          var current_sort_th = "";
-          /** Parse sort value.
-           *  correct: sort = field-name_sort-order
-           */
-          if (GET_sort) {
-            GET_sort_order = GET_sort.split("_")[1];
-            GET_sort_field = GET_sort.split("_")[0];
-            current_sort_th = $('th.sortable[data-val=' + GET_sort_field + ']');
-          }
-          if (current_sort_th) {
-            $('th.sortable').removeClass("asc").removeClass("desc");
-            if (GET_sort_order == "ASC") {
-              current_sort_th.addClass("asc");
-            } else if (GET_sort_order == "DESC") {
-              current_sort_th.addClass("desc");
-            }
-          }
-        })
-
-        /** Write sort parameter to GET and set the buttons state */
-        $('th.sortable').click(function() {
-          /** Read from uri*/
-          var GET_sort = $.urlParam('sort');
-          var GET_sort_order = "";
-          var GET_sort_field = "";
-          if (GET_sort) {
-            GET_sort_order = GET_sort.split("_")[1];
-            GET_sort_field = GET_sort.split("_")[0];
-          }
-          /** Update the values*/
-          var current_name = $(this).attr("data-val");
-          if (current_name == GET_sort_field && GET_sort_order == "ASC") {
-            current_order = "DESC";
-          } else {
-            current_order = "ASC";
-          }
-          /** Reload the page with the new value for sort parameter */
-          window.location.href = updateQueryStringParameter(window.location.href, "sort", current_name + '_' + current_order);
-        })
-
-          /** Add a GET parameter into a URI string or update it if already exists
-           *
-           * @param string uri - jQuery selector for button element
-           *        string key - GET parameter key
-           *        string value - GET parameter value
-           *
-           * @return string - the new uri address
-           */
-          function updateQueryStringParameter(uri, key, value) {
-            var re = new RegExp("([?&])" + key + "=.*?(&|$)", "i");
-            var separator = uri.indexOf('?') !== -1
-              ? "&"
-              : "?";
-            if (uri.match(re)) {
-              return uri.replace(re, '$1' + key + "=" + value + '$2');
-            } else {
-              return uri + separator + key + "=" + value;
-            }
-          }
-
-          /** Read the GET parameter value by key
-           *
-           * @param string key - the key of the element to be returned
-           *
-           * @return string - the element value
-           */
-          $.urlParam = function(key) {
-            var results = new RegExp('[\?&]' + key + '=([^&#]*)').exec(window.location.href);
-            if (results == null) {
-              return null;
-            }
-            return decodeURI(results[1]) || 0;
-          }
-        /** FILTERS STOP */
-
-        /** REFUND START */
-        /** Click listener for refund button */
-        $(document).on('click', 'img.refund', function(){
-            /** Read button attribute */
-            var transid = $(this).attr('data-transid');
-            var parent = $(this).parents('tr');
-            $(parent).css('opacity','0.2');
-            /** Endpoint URL */
-            var refund = window.location.pathname+'/twispay_actions.php';
-            setTimeout(function(){
-                /** user confirmation popup */
-                if(window.confirm("Are you sure you want to refund transaction #"+transid+ " ?\nProcess is not reversible !!!")){
-                    $(parent).css('opacity','1');
-                    $.ajax({
-                        url: refund,
-                        dataType: 'json',
-                        type: 'post',
-                        /** ajax request parameters */
-                        data: {'transid':transid, 'action': 'refund'},
-                        /** if ajax call succeeded */
-                        success: function(data){
-                            if(data['refunded'] == 1){
-                                alert("Successfully refunded");
-                                window.location.reload(true);
-                            } else {
-                                /** if ajax call failed */
-                                alert(data['status']);
-                            }
-                        },
-                        /** if ajax call failed */
-                        error: function(xhr, ajaxOptions, thrownError) {
-                            $(parent).css('opacity', '1');
-                            var err = thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText;
-                            alert(err);
-                            console.log(err);
-                        }
-                    });
-                /** if user deny popup confirmation */
-                } else {
-                    $(parent).css('opacity','1');
-                }
-            },50);
-        });
-    </script>
-    <style>
-        #contentTwispay{
-            margin-left: 20px;
-            padding-right: 20px;
-        }
-        .big-border{
-            border-right: 4px solid #a7a7a7;
-        }
-        i.refund{
-            font-size: 20px;
-        }
-        table.twispay-logs tr:nth-child(even) td{
-            background-color: #ffffff;
-        }
-        table.twispay-logs tr:nth-child(odd) td{
-            background-color: #f5f5f5;
-        }
-        table.twispay-logs td{
-            text-align: center;
-            padding: 4px;
-        }
-        table.twispay-logs th{
-            text-align: center;
-            padding: 4px;
-        }
-        .red{
-            color:#dd0000;
-            cursor: pointer;
-        }
-        i.refund{
-            background-image: url("images/icons/cross.gif");
-        }
-        div#contentTwispay div.twispay-pagination,  div#contentTwispay div.trans-filter {
-            text-align: right;
-            padding: 20px;
-        }
-        .sortable{
-          color: #1e91cf;
-          cursor: pointer;
-        }
-        .sortable:hover,.sortable:focus{
-          color: #14628c;
-        }
-        .sortable.asc::after,.sortable.desc::after{
-          content: '';
-          position: relative;
-          display: inline-block;
-          border: solid #1e91cf;
-          border-width: 0 2px 2px 0;
-          padding: 3px;
-          margin-left: 5px;
-        }
-        .sortable.desc::after{
-          transform: rotate(45deg);
-          -webkit-transform: rotate(45deg);
-          top: -2px;
-        }
-        .sortable.asc::after{
-          transform: rotate(-135deg);
-          -webkit-transform: rotate(-135deg);
-          top: 2px;
-        }
-    </style>
 </div>
 
 <?php

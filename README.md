@@ -1,7 +1,7 @@
 oscommerce-Twispay_Payments
 =========================
 
-The official [Twispay Payment Gateway][twispay] extension for osCommerce.
+The official [Twispay Payment Gateway][twispay] extension for OScommerce.
 
 At the time of purchase, after checkout confirmation, the customer will be redirected to the secure Twispay Payment Gateway.
 
@@ -10,9 +10,9 @@ All payments will be processed in a secure PCI DSS compliant environment so you 
 Install
 =======
 
-1. Download the Twispay payment module from osCommerce Marketplace, where you can find [The Official Twispay Payment Gateway Extension][marketplace]
+TODO 1. Download the Twispay payment module from OScommerce Marketplace, where you can find [The Official Twispay Payment Gateway Extension][marketplace]
 2. Unzip the archive files and upload the content of folder "uploads" in the corresponding files on the server.
-3. Sign in to your osCommerce admin.
+3. Sign in to your OScommerce admin.
 4. Click **Modules** tab and **Payment**.
 5. Click **Install Module**.
 6. Find **Credit card secure payment | Twispay** click on it and then click **Install Module**.
@@ -49,5 +49,5 @@ A functional description of the extension can be found on the [wiki page][doc] -
 
 TODO
 [twispay]: http://twispay.com/
-[marketplace]: https://apps.oscommerce.com/elkhN&twispay-credit-card-payments
-[github]: https://github.com/Twispay/osCommerce
+[marketplace]: https://www.opencart.com/index.php?route=marketplace/extension/info&extension_id=31761&filter_member=twispay
+[github]: https://github.com/MichaelRotaru/OpenCart3.0

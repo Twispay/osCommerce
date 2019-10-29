@@ -4,7 +4,7 @@
  *
  * Encodes notifications sent to the twispay platform.
  *
- * @author   Twistpay
+ * @author   Twispay
  * @version  1.0.1
  */
 

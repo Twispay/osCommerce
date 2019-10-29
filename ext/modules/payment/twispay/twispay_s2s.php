@@ -1,6 +1,6 @@
 <?php
 /**
-* @author   Twistpay
+* @author   Twispay
 * @version  1.0.1
 */
 chdir('../../../../');
@@ -13,6 +13,7 @@ require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Transa
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Oscommerce_Order.php');
 
+/** Include languages */
 global $language;
 require('includes/languages/' . $language . '/modules/payment/twispay.php');
 
@@ -48,14 +49,14 @@ if (!empty($_POST)) {
     }
 
     /** Check if transaction already exist */
-    if (Twispay_Transactions::checkTransaction($decrypted['transactionId'])) {
+    if (Twispay_Transactions::checkTransaction($decrypted['transactionId']) != false) {
         Twispay_Logger::log(LOG_ERROR_TRANSACTION_EXIST_TEXT . $decrypted['transactionId']);
         die();
     }
 
-    /** Validate the decripted response. */
+    /** Validate the decrypted response. */
     $orderValidation = Twispay_Response::checkValidation($decrypted);
-    if (true !== $orderValidation) {
+    if (false == $orderValidation) {
         Twispay_Logger::log(LOG_ERROR_VALIDATING_FAILED_TEXT);
         die();
     }
@@ -72,8 +73,20 @@ if (!empty($_POST)) {
     }
 
     /** Extract the status received from server. */
-    Oscommerce_Order::commit($order_id, $decrypted['externalCustomData']['sendTo'], $decrypted['externalCustomData']['billTo']);
-    Twispay_Status_Updater::updateStatus_IPN($decrypted);
+    Oscommerce_Order::commit($order_id, $decrypted['custom']['sendTo'], $decrypted['custom']['billTo']);
+
+    $status = Twispay_Status_Updater::updateStatus_IPN($decrypted);
+    $orderValidation['completed'] = $status['success'];
+
+    /** Register transaction */
+    Twispay_Transactions::insertTransaction($orderValidation);
+
+    /** If transaction succeded */
+    if($status['success']){
+      die("OK");
+    }else{
+      die();
+    }
 } else {
     Twispay_Logger::log(NO_POST_TEXT);
     die();

@@ -4,7 +4,7 @@
  *
  * Creates helper methods for operations over transactions table
  *
- * @author   Twistpay
+ * @author   Twispay
  * @version  1.0.1
  */
 
@@ -15,11 +15,16 @@ if (! class_exists('Twispay_Transactions')) :
      */
     class Twispay_Transactions
     {
+        /* The custom transactions table name */
+        public static $TABLE_TWISPAY_TRANSACTIONS = 'twispay_transactions';
+        /**
+         * Function that initializes the database table twispay_transactions.
+         */
         public static function createTransactionsTable()
         {
-            $sql = "
-              CREATE TABLE IF NOT EXISTS `twispay_transactions` (
-                  `transaction_id` int(11) NOT NULL AUTO_INCREMENT,
+            return tep_db_query(
+                "CREATE TABLE IF NOT EXISTS `".self::$TABLE_TWISPAY_TRANSACTIONS."` (
+                  `id` int(11) NOT NULL AUTO_INCREMENT,
                   `order_id` int(11) NOT NULL,
                   `status` varchar(16) NOT NULL,
                   `invoice` varchar(30) NOT NULL,
@@ -27,24 +32,29 @@ if (! class_exists('Twispay_Transactions')) :
                   `customerId` int(11) NOT NULL,
                   `orderId` int(11) NOT NULL,
                   `cardId` int(11) NOT NULL,
-                  `transactionId` int(11) NOT NULL,
+                  `transactionId` int(11) NOT NULL UNIQUE KEY,
                   `transactionKind` varchar(16) NOT NULL,
                   `amount` float NOT NULL,
                   `currency` varchar(8) NOT NULL,
                   `date` DATETIME NOT NULL,
-                  `refund_date` DATETIME NOT NULL,
-                  PRIMARY KEY (`transaction_id`)
-              ) ENGINE=MyISAM DEFAULT CHARSET=utf8;";
-            return tep_db_query($sql);
-        }
-
-        public static function dropTransactionsTable()
-        {
-            return tep_db_query("DROP TABLE IF EXISTS `twispay_transactions`");
+                  `completed` BOOLEAN NOT NULL,
+                  `refunded_amount` float NOT NULL DEFAULT 0,
+                  `refund_date` DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+                  PRIMARY KEY (`id`)
+              ) ENGINE=MyISAM DEFAULT CHARSET=utf8;"
+            );
         }
 
         /**
-         * Function that insert a recording into twispay_transactions table.
+         * Function that removes the database table twispay_transactions.
+         */
+        public static function dropTransactionsTable()
+        {
+            return tep_db_query("DROP TABLE IF EXISTS `".self::$TABLE_TWISPAY_TRANSACTIONS."`");
+        }
+
+        /**
+         * Function that inserts a recording into twispay_transactions table.
          *
          * @param array([key => value]) data - Array of data to be populated
          *
@@ -53,8 +63,6 @@ if (! class_exists('Twispay_Transactions')) :
          */
         public static function insertTransaction($data)
         {
-            $data =json_decode(json_encode($data), true);
-
             $columns = array(
               'order_id',
               'status',
@@ -68,7 +76,8 @@ if (! class_exists('Twispay_Transactions')) :
               'amount',
               'currency',
               'date',
-          );
+              'completed'
+            );
 
             if (!empty($data['timestamp'])) {
                 $data['date'] = date('Y-m-d H:i:s', $data['timestamp']);
@@ -77,7 +86,7 @@ if (! class_exists('Twispay_Transactions')) :
             if (!empty($data['identifier'])) {
                 $data['identifier'] = explode("_", $data['identifier'])[1];
             }
-            $query = "INSERT INTO `twispay_transactions` SET ";
+            $query = "INSERT INTO `".self::$TABLE_TWISPAY_TRANSACTIONS."` SET ";
             foreach ($data as $key => $value) {
                 if (!in_array($key, $columns)) {
                     unset($data[$key]);
@@ -92,7 +101,7 @@ if (! class_exists('Twispay_Transactions')) :
         }
 
         /**
-         * Function that returns transaction data
+         * Function that returns the transaction data
          *
          * @param int id - Transaction id
          *
@@ -101,7 +110,7 @@ if (! class_exists('Twispay_Transactions')) :
         **/
         public static function getTransaction($id)
         {
-            $query = tep_db_query("SELECT * FROM `twispay_transactions` WHERE `transactionId`='" . (int)$id . "'");
+            $query = tep_db_query("SELECT * FROM `".self::$TABLE_TWISPAY_TRANSACTIONS."` WHERE `transactionId`='" . (int)$id . "'");
             if (tep_db_num_rows($query)) {
                 return tep_db_fetch_array($query);
             } else {
@@ -110,7 +119,7 @@ if (! class_exists('Twispay_Transactions')) :
         }
 
         /**
-         * Check if a transaction exist or not
+         * Checks if a transaction exist or not
          *
          * @param int id - Transaction id
          *
@@ -119,16 +128,16 @@ if (! class_exists('Twispay_Transactions')) :
         **/
         public static function checkTransaction($id)
         {
-            $query = tep_db_query("SELECT 1 FROM `twispay_transactions` WHERE `transactionId`='" . (int)$id . "'");
+            $query = tep_db_query("SELECT `completed` FROM `".self::$TABLE_TWISPAY_TRANSACTIONS."` WHERE `transactionId`='" . (int)$id . "'");
             if (tep_db_num_rows($query)) {
-                return true;
+                return tep_db_fetch_array($query);
             } else {
                 return false;
             }
         }
 
         /**
-         * Function that update transactions from twispay_transactions table based on the transaction id.
+         * Function that updates the status of a transaction.
          *
          * @param string id - The id of the transaction to be updated
          * @param string status - The new status of the transaction to be updated
@@ -139,89 +148,30 @@ if (! class_exists('Twispay_Transactions')) :
          */
         public static function updateTransactionStatus($id, $status)
         {
-            require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
             $db_status = tep_db_input($status);
-
-            if ($status == Twispay_Status_Updater::$RESULT_STATUSES['REFUND_REQUESTED']) {
-                $query_txt = "UPDATE `twispay_transactions` SET `status`='".$db_status."',`refund_date`= NOW() WHERE `transactionId`='" . (int)$id . "' AND `status`!='".$db_status."'";
-            } else {
-                $query_txt = "UPDATE `twispay_transactions` SET `status`='".$db_status."' WHERE `transactionId`='" . (int)$id . "' AND `status`!='".$db_status."'";
-            }
+            $query_txt = "UPDATE `".self::$TABLE_TWISPAY_TRANSACTIONS."` SET `status`='".$db_status."' WHERE `transactionId`='" . (int)$id . "'";
             $query = tep_db_query($query_txt);
             $array = array(
-             'query' => $query_txt,
-             'affected'  => $query,
-         );
+                'query' => $query_txt,
+                'affected'  => $query,
+            );
             return $array;
         }
 
         /**
-         * Function that call the refund operation via Twispay API and update the local order based on the response.
+         * Function that updates the status of a transaction.
          *
-         * @param array trans_id - Twispay transaction id
+         * @param string id - The id of the transaction to be updated
+         * @param float amount - The new status of the transaction to be updated
          *
-         * @return array([key => value,]) - string 'status'         - Operation message
-         *                                  string 'rawdata'        - Unprocessed response
-         *                                  string 'trans_id'       - The twispay id of the refunded transaction
-         *                                  string 'id_cart'        - The opencart id of the canceled order
-         *                                  boolean 'refunded'      - Operation success indicator
+         * @return float - The refunded amount
          *
          */
-        public static function refundTransaction($trans_id)
+        public static function addTransactionRefundedAmount($id, $val)
         {
-            require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Logger.php');
-            require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
-            $transaction = self::getTransaction($trans_id);
-
-            /** Get the Private Key. */
-            if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMODE == "True") {
-                $url = 'https://api-stage.twispay.com/transaction/' . $transaction['transactionId'];
-                $secretKey = MODULE_PAYMENT_TWISPAY_STAGE_KEY;
-            } else {
-                $url = 'https://api.twispay.com/transaction/' . $transaction['transactionId'];
-                $secretKey = MODULE_PAYMENT_TWISPAY_LIVE_KEY;
-            }
-            $postData = 'amount=' . $transaction['amount'] . '&' . 'message=' . 'Refund for order ' . $transaction['orderId'];
-
-            /** Create a new cURL session. */
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json', 'Authorization: ' . $secretKey]);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-            $response = curl_exec($ch);
-            curl_close($ch);
-            $json = json_decode($response);
-
-            /** Check if curl/decode fails */
-            if (!isset($json)) {
-                $json = new stdClass();
-                $json->message = JSON_DECODE_ERROR_TEXT;
-                Twispay_Logger::api_log(JSON_DECODE_ERROR_TEXT);
-            }
-
-            if ($json->message == 'Success') {
-                $data = array(
-                     'status'          => Twispay_Status_Updater::$RESULT_STATUSES['REFUND_OK'],
-                     'rawdata'         => $json,
-                     'transactionId'   => $trans_id,
-                     'externalOrderId' => $transaction['order_id'],
-                     'refunded'        => 1,
-                 );
-                Twispay_Status_Updater::updateStatus_IPN($data);
-                self::updateTransactionStatus($trans_id, Twispay_Status_Updater::$RESULT_STATUSES['REFUND_REQUESTED']);
-            } else {
-                $data = array(
-                     'status'          => isset($json->error)?$json->error[0]->message:$json->message,
-                     'rawdata'         => $json,
-                     'transactionId'   => $trans_id,
-                     'externalOrderId' => $transaction['order_id'],
-                     'refunded'        => 0,
-                 );
-            }
-            Twispay_Logger::api_log(LOG_REFUND_RESPONSE_TEXT.json_encode($data));
-            return $data;
+            $update_query = tep_db_query("UPDATE `".self::$TABLE_TWISPAY_TRANSACTIONS."` SET `refunded_amount`= `refunded_amount`+'".tep_db_input($val)."' WHERE `transactionId`='" . (int)$id . "'");
+            $get_query = tep_db_query("SELECT `refunded_amount` FROM `".self::$TABLE_TWISPAY_TRANSACTIONS."` WHERE `transactionId`='" . (int)$id . "'");
+            return floatval(tep_db_fetch_array($get_query)['refunded_amount']);
         }
     }
 endif; /* End if class_exists. */

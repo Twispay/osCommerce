@@ -4,7 +4,7 @@
  *
  * Logs messages and transactions.
  *
- * @author   Twistpay
+ * @author   Twispay
  * @version  1.0.1
  */
 
@@ -21,7 +21,7 @@ if (! class_exists('Twispay_Logger')) :
         /**
          * Attempts to create the directory specified by pathname.
          *
-         * @param string path - The id of the order to be checked
+         * @param string path - The logs directory path.
          *
          * @return boolean - true / false
          *
@@ -37,7 +37,7 @@ if (! class_exists('Twispay_Logger')) :
         /**
          * Recursively removes directory and its content
          *
-         * @param string path - Path to the directory.
+         * @param string path - The logs directory path.
          *
          * @return boolean - TRUE / FALSE
          *
@@ -50,7 +50,7 @@ if (! class_exists('Twispay_Logger')) :
             $files = array_diff(scandir($path), array('.', '..'));
 
             foreach ($files as $file) {
-                (is_dir("$path/$file")) ? delTree("$path/$file") : unlink("$path/$file");
+                (is_dir("$path/$file")) ? delLogDir("$path/$file") : unlink("$path/$file");
             }
 
             return rmdir($path);
@@ -59,9 +59,10 @@ if (! class_exists('Twispay_Logger')) :
         /**
          * Function that logs a message to the transaction log file.
          *
-         * @param string - Message to log to file.
+         * @param string - Message to be logged.
          *
          * @return void
+         *
          */
         public static function log($message = false)
         {
@@ -75,9 +76,10 @@ if (! class_exists('Twispay_Logger')) :
         /**
          * Function that logs a message to the requests log file.
          *
-         * @param string - Message to log to file.
+         * @param string - Message to be logged.
          *
          * @return void
+         *
          */
         public static function api_log($message = false)
         {

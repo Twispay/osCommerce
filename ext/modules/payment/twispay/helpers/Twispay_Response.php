@@ -4,7 +4,7 @@
  *
  * Decodes and validates notifications sent by the Twispay server.
  *
- * @author   Twistpay
+ * @author   Twispay
  * @version  1.0.1
  */
 
@@ -24,8 +24,9 @@ if (! class_exists('Twispay_Response')) :
          * @param string $tw_encryptedMessage - The encripted server message.
          * @param string $tw_secretKey        - The secret key (from Twispay).
          *
-         * @return Array([key => value,]) - If everything is ok array containing the decrypted data.
-         *         bool(FALSE)            - If decription fails.
+         * @return bool(false) - If decription fails.
+         *         array([key => value]) - If everything is ok array containing the decrypted data.
+         *
          */
         public static function decryptMessage($tw_encryptedMessage, $tw_secretKey)
         {
@@ -66,13 +67,14 @@ if (! class_exists('Twispay_Response')) :
         }
 
         /**
-         * Function that validates a decripted response.
+         * Function that validates a decrypted response.
          *
          * @param tw_response The server decripted and JSON decoded response
          * @param that Controller instance use for accessing runtime values like configuration, active language, etc.
          *
-         * @return bool(FALSE)     - If any error occurs
-         *         bool(TRUE)      - If the validation is successful
+         * @return bool(false) - If any error occurs
+         *         array([key => value]) - Validated decrypted data.
+         *
          */
 
         public static function checkValidation($tw_response)
@@ -99,8 +101,8 @@ if (! class_exists('Twispay_Response')) :
                 $tw_errors[] = LOG_ERROR_EMPTY_TRANSACTION_TEXT;
             }
             /** Check if status is valid */
-            if (!in_array($data['status'], Twispay_Status_Updater::$RESULT_STATUSES)) {
-                $tw_errors[] = LOG_ERROR_WRONG_STATUS_TEXT . $data['status'];
+            if (!in_array($tw_response['status'], Twispay_Status_Updater::$RESULT_STATUSES)) {
+                $tw_errors[] = LOG_ERROR_WRONG_STATUS_TEXT . $tw_response['status'];
             }
             /** Check for error and log them all */
             if (sizeof($tw_errors)) {
@@ -112,23 +114,23 @@ if (! class_exists('Twispay_Response')) :
             } else {
                 /** Prepare the data object related to transaction table format */
                 $data = ['order_id'         => (int)$tw_response['externalOrderId']
-                      , 'status'          => $tw_response['status']
-                      , 'invoice'         => ''
-                      , 'identifier'      => $tw_response['identifier']
-                      , 'customerId'      => (int)$tw_response['customerId']
-                      , 'orderId'         => (int)$tw_response['orderId']
-                      , 'cardId'          => (int)$tw_response['cardId']
-                      , 'transactionId'   => (int)$tw_response['transactionId']
-                      , 'transactionKind' => $tw_response['transactionKind']
-                      , 'amount'          => (float)$tw_response['amount']
-                      , 'currency'        => $tw_response['currency']
-                      , 'timestamp'       => $tw_response['timestamp']];
+                        , 'status'          => $tw_response['status']
+                        , 'invoice'         => ''
+                        , 'identifier'      => $tw_response['identifier']
+                        , 'customerId'      => (int)$tw_response['customerId']
+                        , 'orderId'         => (int)$tw_response['orderId']
+                        , 'cardId'          => (int)$tw_response['cardId']
+                        , 'transactionId'   => (int)$tw_response['transactionId']
+                        , 'transactionKind' => $tw_response['transactionKind']
+                        , 'amount'          => (float)$tw_response['amount']
+                        , 'currency'        => $tw_response['currency']
+                        , 'timestamp'       => $tw_response['timestamp']
+                        ];
 
                 /** Insert the new transaction */
-                Twispay_Transactions::insertTransaction($data);
                 Twispay_Logger::log(LOG_OK_RESPONSE_DATA_TEXT . json_encode($data));
-                Twispay_Logger::log(LOG_OK_VALIDATING_COMPLETE_TEXT . $data['id_cart']);
-                return true;
+                Twispay_Logger::log(LOG_OK_VALIDATING_COMPLETE_TEXT . $data['order_id']);
+                return $data;
             }
         }
     }

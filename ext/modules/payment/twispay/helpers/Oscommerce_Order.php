@@ -3,8 +3,9 @@
  * Twispay Helpers
  *
  * Creates helper methods for operations with orders
+ * The code below is a copy of the osCommerce framework code adapted in some places to the needs of the module
  *
- * @author   Twistpay
+ * @author   Twispay
  * @version  1.0.1
  */
 
@@ -313,30 +314,30 @@ if (! class_exists('Oscommerce_Order')) :
 
             // lets start with the email confirmation
             $email_order = STORE_NAME . "\n" .
-              MODULE_PAYMENT_TWISPAY_EMAIL_SEPARATOR . "\n" .
-              MODULE_PAYMENT_TWISPAY_EMAIL_TEXT_ORDER_NUMBER . ' ' . $order_id . "\n" .
-              MODULE_PAYMENT_TWISPAY_EMAIL_TEXT_INVOICE_URL . ' ' . tep_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $order_id, 'SSL', false) . "\n" .
-              MODULE_PAYMENT_TWISPAY_EMAIL_TEXT_DATE_ORDERED . ' ' . strftime(DATE_FORMAT_LONG) . "\n\n";
+              EMAIL_SEPARATOR . "\n" .
+              EMAIL_TEXT_ORDER_NUMBER . ' ' . $order_id . "\n" .
+              EMAIL_TEXT_INVOICE_URL . ' ' . tep_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $order_id, 'SSL', false) . "\n" .
+              EMAIL_TEXT_DATE_ORDERED . ' ' . strftime(DATE_FORMAT_LONG) . "\n\n";
             if ($order->info['comments']) {
                 $email_order .= tep_db_output($order->info['comments']) . "\n\n";
             }
-            $email_order .= MODULE_PAYMENT_TWISPAY_EMAIL_TEXT_PRODUCTS . "\n" .
-              MODULE_PAYMENT_TWISPAY_EMAIL_SEPARATOR . "\n" .
+            $email_order .= EMAIL_TEXT_PRODUCTS . "\n" .
+              EMAIL_SEPARATOR . "\n" .
               $products_ordered .
-              MODULE_PAYMENT_TWISPAY_EMAIL_SEPARATOR . "\n";
+              EMAIL_SEPARATOR . "\n";
 
             for ($i = 0, $n = sizeof($order_totals); $i < $n; $i++) {
                 $email_order .= strip_tags($order_totals[$i]['title']) . ' ' . strip_tags($order_totals[$i]['text']) . "\n";
             }
 
             if ($order->content_type != 'virtual') {
-                $email_order .= "\n" . MODULE_PAYMENT_TWISPAY_EMAIL_TEXT_DELIVERY_ADDRESS . "\n" .
-                  MODULE_PAYMENT_TWISPAY_EMAIL_SEPARATOR . "\n" .
+                $email_order .= "\n" . EMAIL_TEXT_DELIVERY_ADDRESS . "\n" .
+                  EMAIL_SEPARATOR . "\n" .
                   tep_address_label($customer_id, $sendto, 0, '', "\n") . "\n";
             }
 
-            $email_order .= "\n" . MODULE_PAYMENT_TWISPAY_EMAIL_TEXT_BILLING_ADDRESS . "\n" .
-              MODULE_PAYMENT_TWISPAY_EMAIL_SEPARATOR . "\n" .
+            $email_order .= "\n" . EMAIL_TEXT_BILLING_ADDRESS . "\n" .
+              EMAIL_SEPARATOR . "\n" .
               tep_address_label($customer_id, $billto, 0, '', "\n") . "\n\n";
 
             if (is_object($$payment)) {
@@ -349,11 +350,11 @@ if (! class_exists('Oscommerce_Order')) :
                 }
             }
 
-            tep_mail($order->customer['firstname'] . ' ' . $order->customer['lastname'], $order->customer['email_address'], MODULE_PAYMENT_TWISPAY_EMAIL_TEXT_SUBJECT, $email_order, STORE_OWNER, STORE_OWNER_EMAIL_ADDRESS);
+            tep_mail($order->customer['firstname'] . ' ' . $order->customer['lastname'], $order->customer['email_address'], EMAIL_TEXT_SUBJECT, $email_order, STORE_OWNER, STORE_OWNER_EMAIL_ADDRESS);
 
             // send emails to other people
             if (SEND_EXTRA_ORDER_EMAILS_TO != '') {
-                tep_mail('', SEND_EXTRA_ORDER_EMAILS_TO, MODULE_PAYMENT_TWISPAY_EMAIL_TEXT_SUBJECT, $email_order, STORE_OWNER, STORE_OWNER_EMAIL_ADDRESS);
+                tep_mail('', SEND_EXTRA_ORDER_EMAILS_TO, EMAIL_TEXT_SUBJECT, $email_order, STORE_OWNER, STORE_OWNER_EMAIL_ADDRESS);
             }
 
             //// load the after_process function FROM the payment modules
@@ -376,31 +377,36 @@ if (! class_exists('Oscommerce_Order')) :
          * Update order status
          *
          * @param int oID: The order id.
-         * @param int status: Status id.
+         * @param int status: Status id. -1 to add a history registration with the same status
          * @param boolean notify_customer: If the customers should be notified or not via email.
          * @param string notify_comments: The comment to be added to confirmation email body.
          *
          */
         public static function updateStatus($oID, $status, $comments, $notify_customer = 0, $notify_comments = 0)
         {
+            require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
+
             $order_updated = false;
             $check_status_query = tep_db_query("select customers_name, customers_email_address, orders_status, date_purchased from " . TABLE_ORDERS . " where orders_id = '" . (int)$oID . "'");
             $check_status = tep_db_fetch_array($check_status_query);
 
-            if (($check_status['orders_status'] != $status)) {
-                tep_db_query("update " . TABLE_ORDERS . " set orders_status = '" . tep_db_input($status) . "', last_modified = now() where orders_id = '" . (int)$oID . "'");
-                $customer_notified = '0';
-                if ($notify_customer) {
-                    if ($notify_comments) {
-                        $notify_comments = sprintf(EMAIL_TEXT_COMMENTS_UPDATE, $comments) . "\n\n";
-                    }
-                    $email = STORE_NAME . "\n" . EMAIL_SEPARATOR . "\n" . EMAIL_TEXT_ORDER_NUMBER . ' ' . $oID . "\n" . EMAIL_TEXT_INVOICE_URL . ' ' . tep_catalog_href_link(FILENAME_CATALOG_ACCOUNT_HISTORY_INFO, 'order_id=' . $oID, 'SSL') . "\n" . EMAIL_TEXT_DATE_ORDERED . ' ' . tep_date_long($check_status['date_purchased']) . "\n\n" . $notify_comments . sprintf(EMAIL_TEXT_STATUS_UPDATE, $orders_status_array[$status]);
-                    tep_mail($check_status['customers_name'], $check_status['customers_email_address'], EMAIL_TEXT_SUBJECT, $email, STORE_OWNER, STORE_OWNER_EMAIL_ADDRESS);
-                    $customer_notified = '1';
-                }
-                tep_db_query("insert into " . TABLE_ORDERS_STATUS_HISTORY . " (orders_id, orders_status_id, date_added, customer_notified, comments) values ('" . (int)$oID . "', '" . tep_db_input($status) . "', now(), '" . tep_db_input($customer_notified) . "', '" . tep_db_input($comments)  . "')");
-                $order_updated = true;
+            if($status == -1){
+              $status = $check_status['orders_status'];
             }
+
+            tep_db_query("update " . TABLE_ORDERS . " set orders_status = '" . tep_db_input($status) . "', last_modified = now() where orders_id = '" . (int)$oID . "'");
+            $customer_notified = '0';
+            if ($notify_customer) {
+                if ($notify_comments) {
+                    $notify_comments = sprintf(EMAIL_TEXT_COMMENTS_UPDATE, $comments) . "\n\n";
+                }
+                $email = STORE_NAME . "\n" . EMAIL_SEPARATOR . "\n" . EMAIL_TEXT_ORDER_NUMBER . ' ' . $oID . "\n" . EMAIL_TEXT_INVOICE_URL . ' ' . tep_catalog_href_link(FILENAME_CATALOG_ACCOUNT_HISTORY_INFO, 'order_id=' . $oID, 'SSL') . "\n" . EMAIL_TEXT_DATE_ORDERED . ' ' . tep_date_long($check_status['date_purchased']) . "\n\n" . $notify_comments . sprintf(EMAIL_TEXT_STATUS_UPDATE, $orders_status_array[$status]);
+                tep_mail($check_status['customers_name'], $check_status['customers_email_address'], EMAIL_TEXT_SUBJECT, $email, STORE_OWNER, STORE_OWNER_EMAIL_ADDRESS);
+                $customer_notified = '1';
+            }
+            tep_db_query("insert into " . TABLE_ORDERS_STATUS_HISTORY . " (orders_id, orders_status_id, date_added, customer_notified, comments) values ('" . (int)$oID . "', '" . tep_db_input($status) . "', now(), '" . tep_db_input($customer_notified) . "', '" . tep_db_input($comments)  . "')");
+            $order_updated = true;
+
             return $order_updated;
         }
     }

@@ -4,7 +4,7 @@
  *
  * Print HTML notices.
  *
- * @author   Twistpay
+ * @author   Twispay
  * @version  1.0.1
  */
 
@@ -23,8 +23,8 @@ if (! class_exists('Twispay_Notification')) :
             <?php if (strlen($text)) { ?>
               <span><?= $text; ?></span>
             <?php } ?>
-            <?php if (defined('MODULE_PAYMENT_TWISPAY_EMAIL') && strlen(MODULE_PAYMENT_TWISPAY_EMAIL) == 0) { ?>
-              <p><?= GENERAL_ERROR_DESC_F_TEXT ?> <?= GENERAL_DESC_CONTACT_TEXT . GENERAL_ERROR_DESC_S_TEXT ?></p>
+            <?php if (!defined('MODULE_PAYMENT_TWISPAY_EMAIL') || strlen(MODULE_PAYMENT_TWISPAY_EMAIL) == 0) { ?>
+              <p><?= GENERAL_ERROR_DESC_F_TEXT ?> <?= GENERAL_ERROR_DESC_CONTACT_TEXT . GENERAL_ERROR_DESC_S_TEXT ?></p>
             <?php } else { ?>
               <p><?= GENERAL_ERROR_DESC_F_TEXT ?> <a href="mailto:<?= MODULE_PAYMENT_TWISPAY_EMAIL ?>"><?= GENERAL_ERROR_DESC_CONTACT_TEXT ?></a> <?= GENERAL_ERROR_DESC_S_TEXT ?></p>
             <?php } ?>

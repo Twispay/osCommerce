@@ -1,6 +1,6 @@
 <?php
 /**
-* @author   Twistpay
+* @author   Twispay
 * @version  1.0.1
 */
 chdir('../../../../');
@@ -56,17 +56,22 @@ if(!empty($_POST)){
     }
 
     /** Check if transaction already exist */
-    if (Twispay_Transactions::checkTransaction($decrypted['transactionId'])) {
+    $transactionCheck = Twispay_Transactions::checkTransaction($decrypted['transactionId']);
+    if ($transactionCheck != false) {
         Twispay_Logger::log(LOG_ERROR_TRANSACTION_EXIST_TEXT . $decrypted['transactionId']);
-        global $cart;
-        $cart->reset(true);
-        Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
+        /** If transaction was completed redirect cu success page */
+        if($transactionCheck['completed'] == 1){
+          Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
+        }else{
+          /** If transaction failed show notice */
+          Twispay_Notification::print_notice();
+        }
         die();
     }
 
-    /** Validate the decripted response. */
+    /** Validate the decrypted response. */
     $orderValidation = Twispay_Response::checkValidation($decrypted);
-    if (TRUE !== $orderValidation) {
+    if (false == $orderValidation) {
         Twispay_Logger::log(LOG_ERROR_VALIDATING_FAILED_TEXT);
         Twispay_Notification::print_notice();
         die();
@@ -74,8 +79,7 @@ if(!empty($_POST)){
 
     /** Extract the order. */
     $order_id = $decrypted['externalOrderId'];
-    $db_order_id = tep_db_input($order_id);
-    $order_query = tep_db_query("SELECT * FROM `" . TABLE_ORDERS . "` WHERE `orders_id`='" . $db_order_id . "'" );
+    $order_query = tep_db_query("SELECT * FROM `" . TABLE_ORDERS . "` WHERE `orders_id`='" . tep_db_input($order_id) . "'" );
 
     /*** Check if the order extraction failed. */
     if (empty(tep_db_num_rows($order_query))) {
@@ -86,8 +90,20 @@ if(!empty($_POST)){
 
     /** Extract the status received from server. */
     Oscommerce_Order::commit($order_id, $decrypted['custom']['sendTo'], $decrypted['custom']['billTo']);
-    Twispay_Status_Updater::updateStatus_backUrl($decrypted);
 
+    $status = Twispay_Status_Updater::updateStatus_backUrl($decrypted);
+    $orderValidation['completed'] = $status['success'];
+
+    /** Register transaction */
+    Twispay_Transactions::insertTransaction($orderValidation);
+
+    /** If transaction succeded redirect to success page */
+    if($status['success']){
+        Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
+    }else{
+    /** If transaction fails redirect show notice and the error message */
+        Twispay_Notification::print_notice($status['message']);
+    }
 } else {
     Twispay_Logger::log(NO_POST_TEXT);
     Twispay_Notification::print_notice(NO_POST_TEXT);
