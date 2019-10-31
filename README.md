@@ -49,5 +49,5 @@ A functional description of the extension can be found on the [wiki page][doc] -
 
 TODO
 [twispay]: http://twispay.com/
-[marketplace]: https://www.opencart.com/index.php?route=marketplace/extension/info&extension_id=31761&filter_member=twispay
-[github]: https://github.com/MichaelRotaru/OpenCart3.0
+[marketplace]: https://apps.oscommerce.com/elkhN&twispay-credit-card-payments
+[github]: https://github.com/Twispay/osCommerce

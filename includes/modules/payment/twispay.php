@@ -22,8 +22,7 @@ class twispay
         if ( $this->enabled === true && isset($order) && is_object($order) ) {
           $this->update_status();
         }
-        $this->signature = 'twispay|twispay|1.0|1.0';
-        $this->api_version = '1.0';
+        $this->signature = 'twispay|twispay|1.0.1|2.3';
         $this->code = 'twispay';
         $this->title = MODULE_PAYMENT_TWISPAY_TEXT_TITLE;
         $this->public_title = MODULE_PAYMENT_TWISPAY_TEXT_PUBLIC_TITLE;

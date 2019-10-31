@@ -48,17 +48,17 @@ function TwispayCheckLiveOrStaging() {
   }
   /** If the live mode is chacked */
   if (radionVal == "True") {
-    /** Disable - Staging - Site ID / Private Key */
+    /** Disable - Live - Site ID / Private Key */
     $('input[name="configuration[MODULE_PAYMENT_TWISPAY_LIVE_ID]"]').attr("disabled", "disabled");
     $('input[name="configuration[MODULE_PAYMENT_TWISPAY_LIVE_KEY]"]').attr("disabled", "disabled");
-    /** Enable - Live - Site ID / Private Key */
+    /** Enable - Staging - Site ID / Private Key */
     $('input[name="configuration[MODULE_PAYMENT_TWISPAY_STAGE_ID]"]').removeAttr("disabled");
     $('input[name="configuration[MODULE_PAYMENT_TWISPAY_STAGE_KEY]"]').removeAttr("disabled");
   } else {
-    /** Enable - Staging - Site ID / Private Key */
+    /** Enable - Live - Site ID / Private Key */
     $('input[name="configuration[MODULE_PAYMENT_TWISPAY_LIVE_ID]"]').removeAttr("disabled");
     $('input[name="configuration[MODULE_PAYMENT_TWISPAY_LIVE_KEY]"]').removeAttr("disabled");
-    /** Disable - Live - Site ID / Private Key */
+    /** Disable - Staging - Site ID / Private Key */
     $('input[name="configuration[MODULE_PAYMENT_TWISPAY_STAGE_ID]"]').attr("disabled", "disabled");
     $('input[name="configuration[MODULE_PAYMENT_TWISPAY_STAGE_KEY]"]').attr("disabled", "disabled");
   }
