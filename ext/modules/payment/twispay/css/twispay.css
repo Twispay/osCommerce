@@ -1,8 +1,7 @@
-/*a.twispay-logs {*/
-    /*line-height: 150%;*/
-    /*color: #39569b;*/
-    /*font-size: 16px;*/
-/*}*/
+/**
+ * @author   Twistpay
+ * @version  1.0.1
+ */
 a.twispay-clean, a.twispay-logs {
     line-height: 150%;
     color: #eb8e36;

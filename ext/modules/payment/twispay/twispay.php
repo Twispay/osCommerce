@@ -1,43 +1,111 @@
 <?php
-    chdir('../../../../');
-    require('includes/application_top.php');
-    require('includes/modules/payment/twispay.php');
-    
-    $tw = new twispay();
-    $tw->log_file = $tw->log_path.'/twispay.log';
-    $page_to_redirect = $tw->redirect_page();
-    if(file_exists($tw->log_file) && filesize($tw->log_file) > 2097152){
-        @file_put_contents($tw->log_file, PHP_EOL.PHP_EOL);
+/**
+* @author   Twispay
+* @version  1.0.1
+*/
+chdir('../../../../');
+require('includes/application_top.php');
+
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Encoder.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Logger.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Notification.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Response.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Transactions.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Thankyou.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Oscommerce_Order.php');
+
+global $language;
+require('includes/languages/' . $language . '/modules/payment/twispay.php');
+
+/** Get the Private Key. */
+if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMODE == "True") {
+    $secretKey = MODULE_PAYMENT_TWISPAY_STAGE_KEY;
+} else {
+    $secretKey = MODULE_PAYMENT_TWISPAY_LIVE_KEY;
+}
+
+/** Check if there is NO secret key. */
+if ('' == $secretKey) {
+    Twispay_Logger::log(LOG_ERROR_INVALID_PRIVATE_TEXT);
+    Twispay_Notification::print_notice();
+    die();
+}
+
+if(!empty($_POST)){
+    echo PROCESSING_TEXT;
+    sleep(1);
+
+    /** Check if the POST is corrupted: Doesn't contain the 'opensslResult' and the 'result' fields. */
+    if (((false == isset($_POST['opensslResult'])) && (false == isset($_POST['result'])))) {
+        Twispay_Logger::log(LOG_ERROR_EMPTY_RESPONSE_TEXT);
+        Twispay_Notification::print_notice();
+        die();
     }
-    
-    if(!empty($_POST)){
-        $tw->prn("Processing ...");
-        sleep(2);
-        $datas = (!empty($_POST['opensslResult'])) ? json_decode($tw->twispayDecrypt($_POST['opensslResult'])) : json_decode($tw->twispayDecrypt($_POST['result']));
-        if(!empty($datas)){
-            $tw->twispay_log('[INFO]: Decrypted response:');
-            $tw->twispay_log(json_encode($datas));
-            $result = $tw->checkValidation($datas);
-            if(!empty($result)){
-                if(empty($tw->checkTransaction($result->transactionId))){
-                    $tw->loggTransaction($result);
-                    $tw->success_process($result->order_id, $result->sendto, $result->billto,$result->transactionId, $result->comments);
-                } else {
-                    $tw->twispay_log(sprintf('[RESPONSE ERROR]: Transaction #%s already exists', $result->transactionId));
-                    $tw->twispay_log();
-                    $tw->reset_cart();
-                }
-            } else {
-                $tw->twispay_log('[RESPONSE ERROR]: No result data');
-                $tw->twispay_log();
-            }
-        } else {
-            $tw->twispay_log("[RESPONSE ERROR] : no datas ");
-            $tw->twispay_log();
-        }
+
+    /** Extract the server response and decrypt it. */
+    $decrypted = Twispay_Response::decryptMessage(/**tw_encryptedResponse*/(isset($_POST['opensslResult'])) ? ($_POST['opensslResult']) : ($_POST['result']), $secretKey);
+
+    /** Check if decryption failed.  */
+    if (false === $decrypted) {
+        Twispay_Logger::log(LOG_ERROR_DECRYPTION_ERROR_TEXT);
+        Twispay_Notification::print_notice();
+        die();
     } else {
-        $tw->twispay_log("NO POST");
+        Twispay_Logger::log(LOG_OK_STRING_DECRYPTED_TEXT. json_encode($decrypted));
     }
-    echo '<meta http-equiv="refresh" content="1;url='. $page_to_redirect.'" />';
-    header('Refresh: 1;url=' . $page_to_redirect);
-?>
+
+    /** Check if transaction already exist */
+    $transactionCheck = Twispay_Transactions::checkTransaction($decrypted['transactionId']);
+    if ($transactionCheck != false) {
+        Twispay_Logger::log(LOG_ERROR_TRANSACTION_EXIST_TEXT . $decrypted['transactionId']);
+        /** If transaction was completed redirect cu success page */
+        if($transactionCheck['completed'] == 1){
+          Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
+        }else{
+          /** If transaction failed show notice */
+          Twispay_Notification::print_notice();
+        }
+        die();
+    }
+
+    /** Validate the decrypted response. */
+    $orderValidation = Twispay_Response::checkValidation($decrypted);
+    if (false == $orderValidation) {
+        Twispay_Logger::log(LOG_ERROR_VALIDATING_FAILED_TEXT);
+        Twispay_Notification::print_notice();
+        die();
+    }
+
+    /** Extract the order. */
+    $order_id = $decrypted['externalOrderId'];
+    $order_query = tep_db_query("SELECT * FROM `" . TABLE_ORDERS . "` WHERE `orders_id`='" . tep_db_input($order_id) . "'" );
+
+    /*** Check if the order extraction failed. */
+    if (empty(tep_db_num_rows($order_query))) {
+        Twispay_Logger::log(LOG_ERROR_INVALID_ORDER_TEXT);
+        Twispay_Notification::print_notice();
+        die();
+    }
+
+    /** Extract the status received from server. */
+    Oscommerce_Order::commit($order_id, $decrypted['custom']['sendTo'], $decrypted['custom']['billTo']);
+
+    $status = Twispay_Status_Updater::updateStatus_backUrl($decrypted);
+    $orderValidation['completed'] = $status['success'];
+
+    /** Register transaction */
+    Twispay_Transactions::insertTransaction($orderValidation);
+
+    /** If transaction succeded redirect to success page */
+    if($status['success']){
+        Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
+    }else{
+    /** If transaction fails redirect show notice and the error message */
+        Twispay_Notification::print_notice($status['message']);
+    }
+} else {
+    Twispay_Logger::log(NO_POST_TEXT);
+    Twispay_Notification::print_notice(NO_POST_TEXT);
+    die();
+}
