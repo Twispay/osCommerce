@@ -200,7 +200,6 @@ Changelog
 
 A functional description of the extension can be found on the [wiki page][doc] -->
 
-TODO
 [twispay]: http://twispay.com/
 [marketplace]: https://apps.oscommerce.com/elkhN&twispay-credit-card-payments
 [github]: https://github.com/Twispay/osCommerce

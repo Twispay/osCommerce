@@ -18,9 +18,6 @@ require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Respon
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Transactions.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
 
-// TODO
-Twispay_Logger::log("IPN");
-
 /** Get the Private Key. */
 if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMODE == "True") {
     $secretKey = MODULE_PAYMENT_TWISPAY_STAGE_KEY;
