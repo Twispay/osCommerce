@@ -7,9 +7,12 @@
 chdir('../../../../');
 require('includes/application_top.php');
 require(DIR_WS_INCLUDES.'template_top.php');
-require('../includes/languages/' . $language . '/modules/payment/twispay.php');
-
+/** Include language file */
+require('../'.DIR_WS_LANGUAGES.$language.'/modules/payment/twispay.php');
+/** Load dependencies */
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Transactions.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Oscommerce_Order.php');
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Subscriptions.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
 
 /** Get catalog directory */
@@ -21,6 +24,7 @@ if (getenv('HTTPS') == 'on') { // We are loading an SSL page
 
 /** Include module css/js files */
 echo '<script type="text/javascript" src="'.$admin_dir.'/ext/modules/payment/twispay/js/twispay_transactions.js"></script>';
+echo '<script type="text/javascript" src="'.$admin_dir.'/ext/modules/payment/twispay/js/twispay_actions.js"></script>';
 echo '<link rel="stylesheet" type="text/css" href="'.$admin_dir.'/ext/modules/payment/twispay/css/twispay.css"/>';
 
 /** Get query field 'id' of each row
@@ -33,8 +37,8 @@ echo '<link rel="stylesheet" type="text/css" href="'.$admin_dir.'/ext/modules/pa
 function getids($query)
 {
     $data = array();
-    if(!empty(tep_db_num_rows($query))){
-        while ($dat = tep_db_fetch_array($query)){
+    if (!empty(tep_db_num_rows($query))) {
+        while ($dat = tep_db_fetch_array($query)) {
             array_push($data, $dat['id']);
         }
     }
@@ -51,10 +55,10 @@ function getids($query)
 function getdata($query)
 {
     $data = array();
-    if(!empty(tep_db_num_rows($query))){
-        while ($dat = tep_db_fetch_array($query)){
-          /** Append fetched value to data array */
-          array_push($data, json_decode(json_encode($dat)) /** Cast to stdObject type */);
+    if (!empty(tep_db_num_rows($query))) {
+        while ($dat = tep_db_fetch_array($query)) {
+            /** Append fetched value to data array */
+            array_push($data, json_decode(json_encode($dat)) /** Cast to stdObject type */);
         }
     }
     return $data;
@@ -70,12 +74,11 @@ function getdata($query)
  */
 function remove_query($url, $which_argument=false)
 {
-    return preg_replace('/'. ($which_argument ? '(\&|)'.$which_argument.'(\=(.*?)((?=&(?!amp\;))|$)|(.*?)\b)' : '(\?.*)').'/i' , '', $url);
+    return preg_replace('/'. ($which_argument ? '(\&|)'.$which_argument.'(\=(.*?)((?=&(?!amp\;))|$)|(.*?)\b)' : '(\?.*)').'/i', '', $url);
 }
 
 /** GET DATA */
 /** Read and validate GET arguments*/
-
 /** Transaction status */
 $statuses = Twispay_Status_Updater::$RESULT_STATUSES;
 /** Default status | All statuses */
@@ -83,8 +86,8 @@ $selected_status = '0';
 if (isset($_GET["f_status"])) {
     /** Check if selected status is valid */
     if (in_array($_GET["f_status"], $statuses)) {
-      /** Set the valid status */
-      $selected_status = $_GET["f_status"];
+        /** Set the valid status */
+        $selected_status = $_GET["f_status"];
     }
 }
 
@@ -104,12 +107,12 @@ if (isset($_GET["sort"])) {
     if (strpos($sort, '_') !== false) {
         $sort = explode("_", $sort);
         /** Check if sort column value is valid */
-        if(in_array($sort[0], $transaction_columns)){
-          $sort_col = $sort[0];
+        if (in_array($sort[0], $transaction_columns)) {
+            $sort_col = $sort[0];
         }
         /** Check if sort order value is valid */
-        if(in_array($sort[1], array("ASC","DESC"))){
-          $sort_order = $sort[1];
+        if (in_array($sort[1], array("ASC","DESC"))) {
+            $sort_order = $sort[1];
         }
     }
 }
@@ -124,21 +127,21 @@ $selected_customer = (!empty($_GET['id']) && in_array($_GET['id'], $customer_ids
 
 /** Create transaction query */
 $query_transactions = "SELECT * from `".Twispay_Transactions::$TABLE_TWISPAY_TRANSACTIONS."`";
-if($selected_customer!='0' || $selected_status!='0'){
-  $query_transactions .= " WHERE ";
+if ($selected_customer!='0' || $selected_status!='0') {
+    $query_transactions .= " WHERE ";
 }
-if($selected_customer!='0'){
+if ($selected_customer!='0') {
     $query_transactions .= "`identifier`='" . $selected_customer . "'";
 }
-if($selected_status!='0'){
-    if($selected_customer!='0'){
-      $query_transactions .= " AND ";
+if ($selected_status!='0') {
+    if ($selected_customer!='0') {
+        $query_transactions .= " AND ";
     }
     $query_transactions .= "`status`='" . $selected_status . "'";
 }
-if($sort_col!='0' && $sort_order!='0'){
+if ($sort_col!='0' && $sort_order!='0') {
     $query_transactions .= " ORDER BY `".$sort_col."` ".$sort_order;
-}else{
+} else {
     $query_transactions .= " ORDER BY `date` DESC";
 }
 
@@ -147,8 +150,8 @@ $records = (!empty(MODULE_PAYMENT_TWISPAY_PAGINATION) && is_numeric(MODULE_PAYME
 $option_page = (!empty($_GET['option_page'])) ? $_GET['option_page'] : 1;
 $options_split = new splitPageResults($option_page /** passed by reference */, $records, $query_transactions /** passed by reference */, $options_query_numrows /** passed by reference */);
 $transactions = getdata(tep_db_query($query_transactions));
-
 ?>
+
 <div id="contentTwispay">
     <div class="container-fluid">
         <div class="panel panel-default">
@@ -156,18 +159,18 @@ $transactions = getdata(tep_db_query($query_transactions));
                 <h2 class="panel-title"><?= MODULE_PAYMENT_TWISPAY_TRANSACTIONS_TITLE_TEXT ?></h2>
                 <div class="trans-filter pull-right">
                     <select class="trans-status">
-                        <option value="0" <?php if($selected_status=='0'){ ?> selected="selected"<?php } ?>><?= MODULE_PAYMENT_TWISPAY_ALLSTATUSES_TEXT ?></option>
-                        <?php foreach($statuses as $status) {?>
-                          <option value="<?=$status?>" <?php if($selected_status==$status){ ?>selected="selected"<?php } ?> title="<?=$status?>"><?=$status?></option>
+                        <option value="0" <?php if ($selected_status=='0') { ?> selected="selected"<?php } ?>><?= MODULE_PAYMENT_TWISPAY_ALLSTATUSES_TEXT ?></option>
+                        <?php foreach ($statuses as $status) {?>
+                          <option value="<?=$status?>" <?php if ($selected_status==$status) { ?>selected="selected"<?php } ?> title="<?=$status?>"><?=$status?></option>
                         <?php } ?>
                     </select>
                     <select class="trans-customers">
-                        <option value="0" <?php if($selected_customer=='0'){ ?> selected="selected"<?php } ?>><?= MODULE_PAYMENT_TWISPAY_ALLCUSTOMERS_TEXT ?></option>
+                        <option value="0" <?php if ($selected_customer=='0') { ?> selected="selected"<?php } ?>><?= MODULE_PAYMENT_TWISPAY_ALLCUSTOMERS_TEXT ?></option>
                         <?php
-                        foreach($customers as $customer) {
+                        foreach ($customers as $customer) {
                             ?>
                             <option value="<?= $customer->id; ?>"
-                                <?php if($selected_customer==$customer->id) { ?>
+                                <?php if ($selected_customer==$customer->id) { ?>
                                     selected="selected"
                                 <?php } ?>
                                     title="<?= $customer->email; ?>"><?= $customer->name; ?>
@@ -180,12 +183,12 @@ $transactions = getdata(tep_db_query($query_transactions));
             </div>
             <div class="panel-body">
                 <?php
-                if(empty($transactions)) {
+                if (empty($transactions)) {
                     ?>
                     <div class="nodata"><?= MODULE_PAYMENT_TWISPAY_NOTRANSACTIONS_TEXT ?></div>
                     <?php
                 } else {
-                ?>
+                    ?>
                 <table class="twispay-logs" cellpading="10px" cellspacing="0" width="100%" border="1">
                     <thead>
                     <tr>
@@ -209,9 +212,9 @@ $transactions = getdata(tep_db_query($query_transactions));
                     <tbody>
 
                     <?php
-
-                    foreach($transactions as $tran) {
-                        ?>
+                    foreach ($transactions as $tran) {
+                        $isSubscription = Twispay_Subscriptions::getOrderRecurringProductsByOrderId($tran->order_id);
+                        $orderStatus = Oscommerce_Order::getStatus($tran->order_id); ?>
                         <tr>
                             <td><?= $tran->identifier; ?></td>
                             <td class="big-border"><?= $tran->order_id; ?></td>
@@ -223,25 +226,24 @@ $transactions = getdata(tep_db_query($query_transactions));
                             <td><?= $tran->amount; ?></td>
                             <td><?= $tran->currency; ?></td>
                             <td><?= $tran->date; ?></td>
-                            <td data-popup-message="<?= sprintf(MODULE_PAYMENT_TWISPAY_REFUND_NOTICE_TEXT,$tran->transactionId); ?>"
+                            <td data-popup-message="<?= sprintf(MODULE_PAYMENT_TWISPAY_REFUND_NOTICE_TEXT, $tran->transactionId); ?>"
                             data-amount-message="<?= MODULE_PAYMENT_TWISPAY_REFUND_AMOUNT_NOTICE_TEXT ?>"
                             data-trans-amount="<?= $tran->amount; ?>"
                             data-transid="<?= $tran->transactionId; ?>"
-                            data-refunded-amount="<?= $tran->refunded_amount; ?>"><?php if($tran->status==Twispay_Status_Updater::$RESULT_STATUSES['COMPLETE_OK'] || $tran->status==Twispay_Status_Updater::$RESULT_STATUSES['PARTIAL_REFUNDED']){ ?>
+                            data-refunded-amount="<?= $tran->refunded_amount; ?>"><?php if ($tran->status==Twispay_Status_Updater::$RESULT_STATUSES['COMPLETE_OK'] || $tran->status==Twispay_Status_Updater::$RESULT_STATUSES['PARTIAL_REFUNDED']) { ?>
                                     <input type="number" name="amount" min="0" max="<?= $tran->amount - $tran->refunded_amount; ?>" style="min-width:50px;top:0">
                                     <img src="images/icons/cross.gif" class="refund fa fa-times red" aria-hidden="true"/>
                                 <?php } ?>
                             </td>
                         </tr>
                         <?php
-                    }
-                    ?>
+                    } ?>
                     </tbody>
                 </table>
                 <div class="twispay-pagination">
                     <?php
-                      echo $options_split->display_links($options_query_numrows, $records, MAX_DISPLAY_PAGE_LINKS, $option_page, remove_query($_SERVER['QUERY_STRING'],"option_page"), 'option_page');
-                    }?>
+                      echo $options_split->display_links($options_query_numrows, $records, MAX_DISPLAY_PAGE_LINKS, $option_page, remove_query($_SERVER['QUERY_STRING'], "option_page"), 'option_page');
+                }?>
                 </div>
             </div>
         </div>

@@ -11,15 +11,14 @@
 /* Security class check */
 if (! class_exists('Twispay_Logger')) :
     /**
-     * Class that implements methods to log
-     * messages and transactions.
+     * Class that implements methods to log messages and transactions.
      */
     class Twispay_Logger
     {
         public static $DIR_LOGS = DIR_FS_CATALOG.'ext/modules/payment/twispay/logs/';
 
         /**
-         * Attempts to create the directory specified by pathname.
+         * Attempts to create the directory specified by path name.
          *
          * @param string path - The logs directory path.
          *
@@ -35,11 +34,11 @@ if (! class_exists('Twispay_Logger')) :
         }
 
         /**
-         * Recursively removes directory and its content
+         * Recursively remove directory and its content
          *
          * @param string path - The logs directory path.
          *
-         * @return boolean - TRUE / FALSE
+         * @return boolean - true / false
          *
          */
         public static function delLogDir($path = false)

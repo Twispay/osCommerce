@@ -2,12 +2,12 @@
  * @author   Twispay
  * @version  1.0.1
  */
-
-*:disabled{
+*:disabled, .disabled {
   opacity: 0.4;
+  pointer-events: none;
 }
 
-a.twispay-clean, a.twispay-logs {
+a.twispay-clean, a.twispay-logs, a.twispay-sync {
   line-height: 150%;
   color: #eb8e36;
   font-size: 16px;

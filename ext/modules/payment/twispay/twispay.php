@@ -1,22 +1,24 @@
 <?php
 /**
-* @author   Twispay
-* @version  1.0.1
-*/
+ * @author   Twispay
+ * @version  1.0.1
+ *
+ * Controller that provides mechanisms to process the BACKURL REQUESTS
+ */
+
 chdir('../../../../');
 require('includes/application_top.php');
 
-require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Encoder.php');
+/** Include language file */
+require_once(DIR_WS_LANGUAGES.$language.'/modules/payment/twispay.php');
+/** Load dependencies */
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Oscommerce_Order.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Logger.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Notification.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Response.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Transactions.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Thankyou.php');
-require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Oscommerce_Order.php');
-
-global $language;
-require('includes/languages/' . $language . '/modules/payment/twispay.php');
 
 /** Get the Private Key. */
 if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMODE == "True") {
@@ -32,7 +34,7 @@ if ('' == $secretKey) {
     die();
 }
 
-if(!empty($_POST)){
+if (!empty($_POST)) {
     echo PROCESSING_TEXT;
     sleep(1);
 
@@ -60,11 +62,11 @@ if(!empty($_POST)){
     if ($transactionCheck != false) {
         Twispay_Logger::log(LOG_ERROR_TRANSACTION_EXIST_TEXT . $decrypted['transactionId']);
         /** If transaction was completed redirect cu success page */
-        if($transactionCheck['completed'] == 1){
-          Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
-        }else{
-          /** If transaction failed show notice */
-          Twispay_Notification::print_notice();
+        if ($transactionCheck['completed'] == 1) {
+            Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
+        } else {
+            /** If transaction failed show notice */
+            Twispay_Notification::print_notice();
         }
         die();
     }
@@ -79,7 +81,7 @@ if(!empty($_POST)){
 
     /** Extract the order. */
     $order_id = $decrypted['externalOrderId'];
-    $order_query = tep_db_query("SELECT * FROM `" . TABLE_ORDERS . "` WHERE `orders_id`='" . tep_db_input($order_id) . "'" );
+    $order_query = tep_db_query("SELECT * FROM `" . TABLE_ORDERS . "` WHERE `orders_id`='" . tep_db_input($order_id) . "'");
 
     /*** Check if the order extraction failed. */
     if (empty(tep_db_num_rows($order_query))) {
@@ -92,16 +94,17 @@ if(!empty($_POST)){
     Oscommerce_Order::commit($order_id, $decrypted['custom']['sendTo'], $decrypted['custom']['billTo']);
 
     $status = Twispay_Status_Updater::updateStatus_backUrl($decrypted);
+    /** Success state */
     $orderValidation['completed'] = $status['success'];
 
     /** Register transaction */
     Twispay_Transactions::insertTransaction($orderValidation);
 
     /** If transaction succeded redirect to success page */
-    if($status['success']){
+    if ($status['success']) {
         Twispay_Thankyou::redirect(MODULE_PAYMENT_TWISPAY_PAGE_REDIRECT);
-    }else{
-    /** If transaction fails redirect show notice and the error message */
+    } else {
+        /** If transaction fails redirect show notice and the error message */
         Twispay_Notification::print_notice($status['message']);
     }
 } else {

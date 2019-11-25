@@ -8,13 +8,13 @@
  * @version  1.0.1
  */
 
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Encoder.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
 
 /* Security class check */
 if (! class_exists('Twispay_Response')) :
     /**
-     * Class that implements methods to decrypt
-     * Twispay server responses.
+     * Class that implements methods to decrypt Twispay server responses.
      */
     class Twispay_Response
     {
@@ -60,7 +60,14 @@ if (! class_exists('Twispay_Response')) :
 
             /* Normalize values */
             $decryptedResponse['status'] = (empty($decryptedResponse['status'])) ? ($decryptedResponse['transactionStatus']) : ($decryptedResponse['status']);
-            $decryptedResponse['externalOrderId'] = explode('_', $decryptedResponse['externalOrderId'])[0];
+            /** Check if externalOrderId uses '_' separator */
+            if (strpos($decryptedResponse['externalOrderId'], '_') !== false) {
+                $explodedVal = explode('_', $decryptedResponse['externalOrderId'])[0];
+                /** Check if externalOrderId contains only digits and is not empty */
+                if (!empty($explodedVal) && ctype_digit($explodedVal)) {
+                    $decryptedResponse['externalOrderId'] = $explodedVal;
+                }
+            }
             $decryptedResponse['cardId'] = (!empty($decryptedResponse['cardId'])) ? ($decryptedResponse['cardId']) : (0);
 
             return $decryptedResponse;

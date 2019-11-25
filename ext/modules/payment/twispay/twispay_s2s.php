@@ -1,21 +1,25 @@
 <?php
 /**
-* @author   Twispay
-* @version  1.0.1
-*/
+ * @author   Twispay
+ * @version  1.0.1
+ *
+ * Controller that provides mechanisms to process the IPN REQUESTS
+ */
+
 chdir('../../../../');
 require('includes/application_top.php');
 
-require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Encoder.php');
+/** Include language file */
+require_once(DIR_WS_LANGUAGES.$language.'/modules/payment/twispay.php');
+/** Load dependencies */
+require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Oscommerce_Order.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Logger.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Response.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Transactions.php');
 require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
-require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Oscommerce_Order.php');
 
-/** Include languages */
-global $language;
-require('includes/languages/' . $language . '/modules/payment/twispay.php');
+// TODO
+Twispay_Logger::log("IPN");
 
 /** Get the Private Key. */
 if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMODE == "True") {
@@ -82,10 +86,10 @@ if (!empty($_POST)) {
     Twispay_Transactions::insertTransaction($orderValidation);
 
     /** If transaction succeded */
-    if($status['success']){
-      die("OK");
-    }else{
-      die();
+    if ($status['success']) {
+        die("OK");
+    } else {
+        die();
     }
 } else {
     Twispay_Logger::log(NO_POST_TEXT);
