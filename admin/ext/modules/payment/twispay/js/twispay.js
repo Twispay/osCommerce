@@ -43,7 +43,7 @@ $(function() {
 /** Function to hide or show LIVE/STAGING inputs on module configuration page */
 function TwispayCheckLiveOrStaging() {
   var radionVal = $(document).find('input[name="configuration[MODULE_PAYMENT_TWISPAY_TESTMODE]"]:checked').val();
-  if (!radionVal.length) {
+  if (radionVal == undefined || !radionVal.length) {
     return;
   }
   /** If the live mode is chacked */

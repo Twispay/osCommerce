@@ -11,9 +11,7 @@
 /* Security class check */
 if (! class_exists('Twispay_Encoder')) :
     /**
-     * Class that implements methods to get the value
-     * of `jsonRequest` and `checksum` that need to be
-     * sent by POST when making a Twispay order.
+     * Class that implements methods to get the value of `jsonRequest` and `checksum` that need to be sent by POST when making a Twispay order.
      */
     class Twispay_Encoder
     {

@@ -23,6 +23,19 @@ if (! class_exists('Oscommerce_Order')) :
         {
             global $cartID, $cart_Twispay_ID, $customer_id, $languages_id, $order, $order_total_modules;
 
+            /** Subscriptions code START*/
+            $subscription = false;
+            if (sizeof($order->products) == 1) {
+                /** Get the recurring product ID */
+                $prodId = tep_get_prid($order->products[0]['id']);
+                /** Read the subscription's fields from recurring Products database table */
+                $query = tep_db_query("SELECT `products_custom_recurring_status`,`products_custom_recurring_duration`,`products_custom_recurring_cycle`,`products_custom_recurring_frequency`,`products_custom_trial_status`,`products_custom_trial_cycle`,`products_custom_trial_frequency`,`products_custom_trial_price` FROM " . TABLE_PRODUCTS . " WHERE products_id = '" . (int)$prodId . "' AND products_custom_recurring_status = 1");
+                if (tep_db_num_rows($query)) {
+                    $subscription = tep_db_fetch_array($query);
+                }
+            }
+            /** Subscriptions code END */
+
             if (tep_session_is_registered('cartID')) {
                 $insert_order = false;
 
@@ -98,7 +111,24 @@ if (! class_exists('Oscommerce_Order')) :
                       'date_purchased' => 'now()',
                       'orders_status' => MODULE_PAYMENT_TWISPAY_PREPARE_ORDER_STATUS_ID,
                       'currency' => $order->info['currency'],
-                      'currency_value' => $order->info['currency_value']);
+                      'currency_value' => $order->info['currency_value'],
+                    );
+
+                    /** Subscriptions code START */
+                    if ($subscription) {
+                        require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Subscriptions.php');
+                        $sql_data_array = array_merge($sql_data_array, [
+                        'orders_custom_recurring_status' => Twispay_Subscriptions::$STATUSES['PENDING'],
+                        'orders_custom_recurring_duration' => $subscription['products_custom_recurring_duration'],
+                        'orders_custom_recurring_cycle' => $subscription['products_custom_recurring_cycle'],
+                        'orders_custom_recurring_frequency' => $subscription['products_custom_recurring_frequency'],
+                        'orders_custom_trial_status' => $subscription['products_custom_trial_status'],
+                        'orders_custom_trial_cycle' => $subscription['products_custom_trial_cycle'],
+                        'orders_custom_trial_frequency' => $subscription['products_custom_trial_frequency'],
+                        'orders_custom_trial_price' => $subscription['products_custom_trial_price']
+                      ]);
+                    }
+                    /** Subscriptions code END */
 
                     tep_db_perform(TABLE_ORDERS, $sql_data_array);
 
@@ -220,9 +250,10 @@ if (! class_exists('Oscommerce_Order')) :
          * @param int sendto: The order address id.
          * @param int billto: The order billing address id.
          * @param int transaction_id: The transaction id.
+         * @param int platform_id: The paymant platform id.
          *
          */
-        public static function commit($order_id=0, $sendto=0, $billto=0, $transaction_id=0)
+        public static function commit($order_id=0, $platform_id=0, $sendto=0, $billto=0, $transaction_id=0)
         {
             global $customer_id, $order, $order_totals, $languages_id, $payment, $currencies, $cart, $$payment;
             require_once(DIR_WS_CLASSES . 'language.php');
@@ -276,6 +307,10 @@ if (! class_exists('Oscommerce_Order')) :
 
                 // Update products_ordered (for bestsellers list)
                 tep_db_query("UPDATE " . TABLE_PRODUCTS . " SET `products_ordered` = `products_ordered` + " . sprintf('%d', $order->products[$i]['qty']) . " WHERE `products_id` = '" . tep_get_prid($order->products[$i]['id']) . "'");
+                // Update the order exeternal id
+                if($platform_id){
+                  tep_db_query("UPDATE " . TABLE_ORDERS . " SET `orders_custom_platform_id` = ". (int)$platform_id . " WHERE `orders_id` = '" . (int)$order_id . "'");
+                }
 
                 //------insert customer choosen option to order--------
                 $attributes_exist = '0';
@@ -378,20 +413,29 @@ if (! class_exists('Oscommerce_Order')) :
          *
          * @param int oID: The order id.
          * @param int status: Status id. -1 to add a history registration with the same status
+         * @param boolean allow_samestatus_overwrite: Flag that  represents the operation ability to accept the same status as previous one
          * @param boolean notify_customer: If the customers should be notified or not via email.
          * @param string notify_comments: The comment to be added to confirmation email body.
          *
+         * @return boolean - true / false - Operation success indicator
          */
-        public static function updateStatus($oID, $status, $comments, $notify_customer = 0, $notify_comments = 0)
+        public static function updateStatus($oID, $status, $allow_samestatus_overwrite, $comments, $notify_customer = 0, $notify_comments = 0)
         {
-            require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Status_Updater.php');
-
             $order_updated = false;
+            $allow_overwrite = false;
+
             $check_status_query = tep_db_query("select customers_name, customers_email_address, orders_status, date_purchased from " . TABLE_ORDERS . " where orders_id = '" . (int)$oID . "'");
             $check_status = tep_db_fetch_array($check_status_query);
-
-            if($status == -1){
-              $status = $check_status['orders_status'];
+            if (!isset($check_status)) {
+                return $order_updated;
+            }
+            /** If status is the same as the previous one and $allow_samestatus_overwrite flag is true return false*/
+            if (!$allow_samestatus_overwrite && $status == $check_status['orders_status']) {
+                return $order_updated;
+            }
+            /** If status value is -1 then keep the current status value */
+            if ($status == -1) {
+                $status = $check_status['orders_status'];
             }
 
             tep_db_query("update " . TABLE_ORDERS . " set orders_status = '" . tep_db_input($status) . "', last_modified = now() where orders_id = '" . (int)$oID . "'");
@@ -408,6 +452,76 @@ if (! class_exists('Oscommerce_Order')) :
             $order_updated = true;
 
             return $order_updated;
+        }
+
+        /**
+         * Update order recurring status
+         *
+         * @param int oID: The order id.
+         * @param string status: The status.
+         *
+         * @return object - The mysqli_result object
+         */
+        public static function updateRecurringStatus($oID, $status)
+        {
+            $query = tep_db_query("update " . TABLE_ORDERS . " set orders_custom_recurring_status = '" . tep_db_input($status) . "' where orders_id = '" . (int)$oID . "'");
+            return $query;
+        }
+
+        /**
+         * Get the order status
+         *
+         * @param int oID: The order id.
+         *
+         * @return int - The order status ID
+         */
+        public static function getStatus($oID)
+        {
+            $order_updated = false;
+            $check_status = tep_db_fetch_array(tep_db_query("select orders_status from " . TABLE_ORDERS . " where orders_id = '" . (int)$oID . "'"));
+
+            if (sizeof($check_status)) {
+                return $check_status['orders_status'];
+            } else {
+                return false;
+            }
+        }
+
+        /**
+         * Get the all the order fields by order id
+         *
+         * @param int oID: The order id.
+         * @param int languagesId: The selected language id.
+         *
+         * @return array - The order data | false - if no order found
+         */
+        public static function getOrderInfo($oID, $languagesId)
+        {
+            $order_info = tep_db_fetch_array(tep_db_query("select * from " . TABLE_ORDERS . " o, " . TABLE_ORDERS_STATUS . " s where o.orders_id = '". (int)$oID . "' and o.orders_status = s.orders_status_id and s.language_id = '" . (int)$languagesId . "' and s.public_flag = '1'"));
+
+            if (sizeof($order_info)) {
+                return $order_info;
+            } else {
+                return false;
+            }
+        }
+
+        /**
+         * Get the order plarform id by local order id
+         *
+         * @param int oID: The order id.
+         *
+         * @return int - The order platform id | false - if nothing found
+         */
+        public static function getOrderPlatformId($oID)
+        {
+            $order_info = tep_db_fetch_array(tep_db_query("select orders_custom_platform_id from " . TABLE_ORDERS . " WHERE orders_id = '". (int)$oID . "'"));
+
+            if (sizeof($order_info)) {
+                return $order_info['orders_custom_platform_id'];
+            } else {
+                return false;
+            }
         }
     }
 endif; /* End if class_exists. */

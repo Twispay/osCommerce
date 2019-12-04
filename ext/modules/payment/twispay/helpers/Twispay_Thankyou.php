@@ -11,7 +11,7 @@
 /* Security class check */
 if (! class_exists('Twispay_Thankyou')) :
     /**
-     *Class that redirects user to the thank you page.
+     * Class that redirects user to the thank you page.
      */
     class Twispay_Thankyou
     {
