@@ -97,7 +97,7 @@ function updateQueryStringParameter(url, key, value) {
 $.urlParam = function(key) {
   var results = new RegExp('[\?&]' + key + '=([^&#]*)').exec(window.location.href);
   if (results == null) {
-    return null;
+    return 0;
   }
   return decodeURI(results[1]) || 0;
 }

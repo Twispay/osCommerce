@@ -45,7 +45,7 @@ class twispay
         if (defined('MODULE_PAYMENT_TWISPAY_STATUS')) {
             $this->description .= '<br/><a class="twispay-logs" href="ext/modules/payment/twispay/">'.MODULE_PAYMENT_TWISPAY_TRANSACTIONS_BUTTON_TEXT.'</a>';
             $this->description .= '<br/><a class="twispay-clean" data-popup-message="'.MODULE_PAYMENT_TWISPAY_CLEANALL_NOTICE_TEXT.'">'.MODULE_PAYMENT_TWISPAY_CLEAR_BUTTON_TEXT.'</a>';
-            $this->description .= '<br/><a class="twispay-sync" data-location="'.$this->admin_dir.'" data-popup-message="'.MODULE_PAYMENT_TWISPAY_SYNC_NOTICE_TEXT.'" data-loading-text="'.MODULE_PAYMENT_TWISPAY_LOADING_TEXT.'" data-default-text="'.MODULE_PAYMENT_TWISPAY_SYNC_BUTTON_TEXT.'">'.MODULE_PAYMENT_TWISPAY_SYNC_BUTTON_TEXT.'</a>';
+            $this->description .= '<br/><a class="twispay-sync" data-location="'.$this->admin_dir.'" data-popup-message="'.MODULE_PAYMENT_TWISPAY_SYNC_NOTICE_TEXT.'" data-success-message="'.MODULE_PAYMENT_TWISPAY_SYNC_SUCCESS_TEXT.'" data-loading-text="'.MODULE_PAYMENT_TWISPAY_LOADING_TEXT.'" data-default-text="'.MODULE_PAYMENT_TWISPAY_SYNC_BUTTON_TEXT.'">'.MODULE_PAYMENT_TWISPAY_SYNC_BUTTON_TEXT.'</a>';
         }
         $this->sort_order = MODULE_PAYMENT_TWISPAY_SORT_ORDER;
 
@@ -69,8 +69,8 @@ class twispay
             }
         }
         /** ADMIN Module section */
-        /** If current page is modules page AND is not install page OR uninstall page **/
-        if (strpos($_SERVER['SCRIPT_NAME'], '/modules.php') > -1 && strpos($_SERVER['REQUEST_URI'], 'action=remove') == 0 && strpos($_SERVER['REQUEST_URI'], 'action=install') == 0) {
+        /** If current page is modules page AND is not uninstall page AND is not install page */
+        if (strpos($_SERVER['SCRIPT_NAME'], '/modules.php') !== false && strpos($_SERVER['REQUEST_URI'], 'action=remove') === false && strpos($_SERVER['REQUEST_URI'], 'action=install') == false) {
             echo '<script type="text/javascript" src="'.$this->admin_dir.'/ext/modules/payment/twispay/js/twispay.js"></script>';
             echo '<script type="text/javascript" src="'.$this->admin_dir.'/ext/modules/payment/twispay/js/twispay_actions.js"></script>';
             echo '<script type="text/javascript" src="'.$this->admin_dir.'/ext/modules/payment/twispay/js/twispay_transactions.js"></script>';
@@ -121,28 +121,31 @@ class twispay
         return false;
     }
 
-    /** Selection page */
+    /** Payment method selection page. */
     public function selection()
     {
         global $cart_Twispay_ID, $order;
 
-
+        /** Check if another unfinished order with twispay payment method was initialized for current cart */
         if (tep_session_is_registered('cart_Twispay_ID')) {
+            /** Remove the order*/
             $order_id = substr($cart_Twispay_ID, strpos($cart_Twispay_ID, '-') + 1);
             if (Oscommerce_Order::delete($order_id)) {
                 tep_session_unregister('cart_Twispay_ID');
             }
         }
+        $result = array('id' => $this->code,'module' => $this->public_title);
 
-        $result = array('id' => $this->code,
-                        'module' => $this->public_title
-                       );
+        /** Check if order containt recurring products */
         if(Twispay_Subscriptions::containRecurrings($order->products)){
+          /** Check if order contain more then one product */
           if (sizeof($order->products) != 1 || $order->products[0]['qty'] != 1) {
             echo "<p class='twispay_checkout_notice'>".MODULE_PAYMENT_TWISPAY_SUBSCRIPTION_TOOMANYPRODUCTS."</p>";
             $result = false;
           }
+          /** Get the subscription */
           $subscription = Twispay_Subscriptions::getRecurringProduct($order->products[0]['id']);
+          /** Check if free trial */
           if ($subscription['products_custom_trial_status'] && $subscription['products_custom_trial_price'] == 0) {
             echo "<p class='twispay_checkout_notice'>".MODULE_PAYMENT_TWISPAY_INVALID_SUBSCRIPTION_FREETRIAL."</p>";
             $result = false;
@@ -175,7 +178,11 @@ class twispay
         return html_entity_decode($val, ENT_QUOTES, 'UTF-8');
     }
 
-    /** Function that loads the message that needs to be sent to the server via ajax. */
+    /** Function that loads the message that needs to be sent to the server via ajax.
+    *
+    * @return strign - the html form to be sent via ajax
+    *
+    */
     public function process_button()
     {
         global $customer_id, $order, $currencies, $currency, $languages_id, $cart_Twispay_ID, $sendto, $billto;
@@ -192,9 +199,9 @@ class twispay
             $secretKey = MODULE_PAYMENT_TWISPAY_LIVE_KEY;
         }
 
+        $customerIdentifierPrefix = 'p';
         $telephone = $this->htmlEntityDecodeUTF8($order->customer['telephone']);
-        $customer = [ 'identifier' => '_' . $customer_id . '_' . date('YmdHis')
-                    , 'firstName' => $this->htmlEntityDecodeUTF8($order->billing['firstname'])
+        $customer = [ 'firstName' => $this->htmlEntityDecodeUTF8($order->billing['firstname'])
                     , 'lastName' => $this->htmlEntityDecodeUTF8($order->billing['lastname'])
                     , 'country' => $this->htmlEntityDecodeUTF8($order->billing['country']['iso_code_2'])
                     , 'city' => $this->htmlEntityDecodeUTF8($order->billing['city'])
@@ -232,73 +239,12 @@ class twispay
         /** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
 
         $orderSubscriptions = Twispay_Subscriptions::getOrderRecurringProductsByOrderId($order_id);
-
         if ($orderSubscriptions) {
+            $customerIdentifierPrefix = 'r';
             /** Multiple subscriptions validation */
             if (sizeof($order->products) == 1 && $order->products[0]['qty'] == 1) {
                 $subscription = $orderSubscriptions[0];
-                /** Extract the subscription details. */
-                $trialFreq = $subscription["products_custom_trial_frequency"]; /** unit of measurement for duration */
-                $trialAmount = (float) $subscription["products_custom_trial_price"];
-                $trialCycle = (int) $subscription["products_custom_trial_cycle"]; /** interval length */
-
-                $totalTrialAmount = $trialAmount * $trialDuration;
-                $today = date("Y-m-d");
-                $firstBillDate = $today;
-
-                switch ($trialFreq) {
-                    case 'day':
-                        $firstBillDate= date("Y-m-d", strtotime("$today + $trialCycle day"));
-                        break;
-                    case 'week':
-                        $firstBillDate= date("Y-m-d", strtotime("$today + $trialCycle week"));
-                        break;
-                    case 'month':
-                        $firstBillDate= date("Y-m-d", strtotime("$today + $trialCycle month"));
-                        break;
-                    case 'year':
-                        $firstBillDate= date("Y-m-d", strtotime("$today + $trialCycle year"));
-                        break;
-                    default:
-                        break;
-                }
-                /** Add time to date */
-                $firstBillDate .="T".date("H:i:s");
-                /** Calculate the subscription's interval type and value. */
-                $intervalDuration = (int)$subscription["products_custom_recurring_duration"]; /** total number of payments */
-                $intervalFreq = $subscription["products_custom_recurring_frequency"]; /** unit of measurement for duration */
-                $intervalCycle = (int)$subscription["products_custom_recurring_cycle"]; /** interval length */
-
-                switch ($intervalFreq) {
-                    case 'week':
-                        /** Convert weeks to days. */
-                        $intervalFreq = 'day';
-                        $intervalCycle = /**days/week*/7 * $intervalCycle;
-                        break;
-                    case 'year':
-                        /** Convert years to months. */
-                        $intervalFreq = 'month';
-                        $intervalCycle = /**months/year*/12 * $intervalCycle;
-                        break;
-                    default:
-                        /** We change nothing in case of DAYS and MONTHS */
-                        break;
-                }
-
-                /** Add the subscription data. */
-                $orderData['order']['intervalType'] = $intervalFreq;
-                $orderData['order']['intervalValue'] = $intervalCycle;
-                $orderData['order']['type'] = "recurring";
-                if ($subscription['products_custom_trial_status']) {
-                    /** Free trial validation */
-                    if ($trialAmount == 0) {
-                        echo "<p class='twispay_checkout_notice'>".MODULE_PAYMENT_TWISPAY_INVALID_SUBSCRIPTION_FREETRIAL."</p>";
-                    }
-                    $orderData['order']['trialAmount'] = $trialAmount;
-                    $orderData['order']['firstBillDate'] = $firstBillDate;
-                }
-                $orderData['order']['description'] = $intervalCycle . " " . $intervalFreq . " subscription " . $subscription['name'];
-
+                $orderData['order'] = array_merge($orderData['order'],$this->process_recurring($subscription));
             } else {
                 echo "<p class='twispay_checkout_notice'>".MODULE_PAYMENT_TWISPAY_SUBSCRIPTION_TOOMANYPRODUCTS."</p>";
             }
@@ -314,6 +260,9 @@ class twispay
             $orderData['order']['items'] = $items;
         }
 
+        $orderData['customer']['identifier'] = '_' . $customer_id . '_' . date('YmdHis');
+        $orderData['customer']['identifier'] = $customerIdentifierPrefix.'_os'.$orderData['customer']['identifier'];
+        
         $base64JsonRequest = Twispay_Encoder::getBase64JsonRequest($orderData);
         $base64Checksum = Twispay_Encoder::getBase64Checksum($orderData, $secretKey);
 
@@ -323,6 +272,76 @@ class twispay
         </form>";
 
         return $htmlOutput;
+    }
+
+    /** Function that loads the recurring order data.
+    *
+    * @return array([key => value]) - recurring order data
+    *
+    */
+    public function process_recurring($subscription){
+      /** Extract the subscription details. */
+      $trialFreq = $subscription["products_custom_trial_frequency"]; /** unit of measurement for duration */
+      $trialAmount = (float) $subscription["products_custom_trial_price"];
+      $trialCycle = (int) $subscription["products_custom_trial_cycle"]; /** interval length */
+
+      $totalTrialAmount = $trialAmount * $trialDuration;
+      $today = date("Y-m-d");
+      $firstBillDate = $today;
+
+      switch ($trialFreq) {
+          case 'day':
+              $firstBillDate= date("Y-m-d", strtotime("$today + $trialCycle day"));
+              break;
+          case 'week':
+              $firstBillDate= date("Y-m-d", strtotime("$today + $trialCycle week"));
+              break;
+          case 'month':
+              $firstBillDate= date("Y-m-d", strtotime("$today + $trialCycle month"));
+              break;
+          case 'year':
+              $firstBillDate= date("Y-m-d", strtotime("$today + $trialCycle year"));
+              break;
+          default:
+              break;
+      }
+      /** Add time to date */
+      $firstBillDate .="T".date("H:i:s");
+      /** Calculate the subscription's interval type and value. */
+      $intervalDuration = (int)$subscription["products_custom_recurring_duration"]; /** total number of payments */
+      $intervalFreq = $subscription["products_custom_recurring_frequency"]; /** unit of measurement for duration */
+      $intervalCycle = (int)$subscription["products_custom_recurring_cycle"]; /** interval length */
+
+      switch ($intervalFreq) {
+          case 'week':
+              /** Convert weeks to days. */
+              $intervalFreq = 'day';
+              $intervalCycle = /**days/week*/7 * $intervalCycle;
+              break;
+          case 'year':
+              /** Convert years to months. */
+              $intervalFreq = 'month';
+              $intervalCycle = /**months/year*/12 * $intervalCycle;
+              break;
+          default:
+              /** We change nothing in case of DAYS and MONTHS */
+              break;
+      }
+
+      /** Add the subscription data. */
+      $result['intervalType'] = $intervalFreq;
+      $result['intervalValue'] = $intervalCycle;
+      $result['type'] = "recurring";
+      if ($subscription['products_custom_trial_status']) {
+          /** Free trial validation */
+          if ($trialAmount == 0) {
+              echo "<p class='twispay_checkout_notice'>".MODULE_PAYMENT_TWISPAY_INVALID_SUBSCRIPTION_FREETRIAL."</p>";
+          }
+          $result['trialAmount'] = $trialAmount;
+          $result['firstBillDate'] = $firstBillDate;
+      }
+      $result['description'] = $intervalCycle . " " . $intervalFreq . " subscription " . $subscription['name'];
+      return $result;
     }
 
     /** Function that checks if module is enabled
@@ -423,7 +442,8 @@ class twispay
                       ADD COLUMN orders_custom_trial_status TINYINT,
                       ADD COLUMN orders_custom_trial_cycle INT(11),
                       ADD COLUMN orders_custom_trial_frequency VARCHAR(10),
-                      ADD COLUMN orders_custom_trial_price FLOAT
+                      ADD COLUMN orders_custom_trial_price FLOAT,
+                      ADD COLUMN orders_custom_platform_id INT(11)
                       ");
     }
 
@@ -456,7 +476,8 @@ class twispay
                     DROP COLUMN orders_custom_trial_status,
                     DROP COLUMN orders_custom_trial_cycle,
                     DROP COLUMN orders_custom_trial_frequency,
-                    DROP COLUMN orders_custom_trial_price
+                    DROP COLUMN orders_custom_trial_price,
+                    DROP COLUMN orders_custom_platform_id
                     ");
     }
 

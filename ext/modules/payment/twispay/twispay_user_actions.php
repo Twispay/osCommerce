@@ -42,4 +42,12 @@ switch ($_POST['action']) {
         /** Print the action respons */
         echo json_encode(Twispay_Actions::cancelSubscription($_POST['tworderid'], $_POST['orderid']));
     break;
+
+    default:
+        if (empty($_POST['action'])) {
+          Twispay_Logger::api_log(ORDER_NO_ACTION_NOTICE_TEXT);
+        }else{
+          Twispay_Logger::api_log(ORDER_INVALID_ACTION_NOTICE_TEXT);
+        }
+    break;
 }

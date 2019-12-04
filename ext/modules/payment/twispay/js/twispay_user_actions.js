@@ -21,15 +21,13 @@ $(document).on('click', '.cancel_subscription', function(e) {
   $(button).css('opacity', '0.5');
   $(button).addClass('disabled');
 
-  var cancel = actionsURL;
-
   setTimeout(function() {
     /** user confirmation popup */
     if (window.confirm(td.attr('data-popup-message'))) {
       $(button).css('opacity', '1');
       $(button).removeClass('disabled');
       $.ajax({
-        url: cancel,
+        url: actionsURL,
         dataType: 'json',
         type: 'post',
         /** ajax request parameters */

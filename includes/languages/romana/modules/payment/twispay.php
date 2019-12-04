@@ -103,6 +103,8 @@ define('ORDER_REFUND_REQUESTED_NOTICE_TEXT','Cererea de rambursare inregistrata 
 define('ORDER_REFUNDED_REQUESTED_NOTICE_TEXT','Twispay refund requested');
 define('ORDER_PAID_NOTICE_TEXT','Platit Twispay #');
 define('ORDER_CANCELED_NOTICE_TEXT','Plata Twispay a fost anulata');
+define('ORDER_NO_ACTION_NOTICE_TEXT','Parametrul actiune nu este definit.');
+define('ORDER_INVLID_ACTION_NOTICE_TEXT','Actiunea specificata nu este valida.');
 
 /* LOG insertor */
 define('LOG_REFUND_RASPUNS_TEXT','[RASPUNS]: Datele operatiunii de rambursare: ');

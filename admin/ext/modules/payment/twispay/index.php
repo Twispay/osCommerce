@@ -184,11 +184,11 @@ $transactions = getdata(tep_db_query($query_transactions));
             <div class="panel-body">
                 <?php
                 if (empty($transactions)) {
-                    ?>
-                    <div class="nodata"><?= MODULE_PAYMENT_TWISPAY_NOTRANSACTIONS_TEXT ?></div>
-                    <?php
+                ?>
+                <div class="nodata"><?= MODULE_PAYMENT_TWISPAY_NOTRANSACTIONS_TEXT ?></div>
+                <?php
                 } else {
-                    ?>
+                ?>
                 <table class="twispay-logs" cellpading="10px" cellspacing="0" width="100%" border="1">
                     <thead>
                     <tr>
@@ -212,9 +212,7 @@ $transactions = getdata(tep_db_query($query_transactions));
                     <tbody>
 
                     <?php
-                    foreach ($transactions as $tran) {
-                        $isSubscription = Twispay_Subscriptions::getOrderRecurringProductsByOrderId($tran->order_id);
-                        $orderStatus = Oscommerce_Order::getStatus($tran->order_id); ?>
+                    foreach ($transactions as $tran) {?>
                         <tr>
                             <td><?= $tran->identifier; ?></td>
                             <td class="big-border"><?= $tran->order_id; ?></td>
@@ -241,8 +239,8 @@ $transactions = getdata(tep_db_query($query_transactions));
                     </tbody>
                 </table>
                 <div class="twispay-pagination">
-                    <?php
-                      echo $options_split->display_links($options_query_numrows, $records, MAX_DISPLAY_PAGE_LINKS, $option_page, remove_query($_SERVER['QUERY_STRING'], "option_page"), 'option_page');
+                <?php
+                    echo $options_split->display_links($options_query_numrows, $records, MAX_DISPLAY_PAGE_LINKS, $option_page, remove_query($_SERVER['QUERY_STRING'], "option_page"), 'option_page');
                 }?>
                 </div>
             </div>

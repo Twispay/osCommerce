@@ -23,7 +23,7 @@ if (! class_exists('Oscommerce_Order')) :
         {
             global $cartID, $cart_Twispay_ID, $customer_id, $languages_id, $order, $order_total_modules;
 
-            /** Subscriptions */
+            /** Subscriptions code START*/
             $subscription = false;
             if (sizeof($order->products) == 1) {
                 /** Get the recurring product ID */
@@ -34,7 +34,7 @@ if (! class_exists('Oscommerce_Order')) :
                     $subscription = tep_db_fetch_array($query);
                 }
             }
-            /** Subscriptions */
+            /** Subscriptions code END */
 
             if (tep_session_is_registered('cartID')) {
                 $insert_order = false;
@@ -114,7 +114,7 @@ if (! class_exists('Oscommerce_Order')) :
                       'currency_value' => $order->info['currency_value'],
                     );
 
-                    /** Subscriptions */
+                    /** Subscriptions code START */
                     if ($subscription) {
                         require_once(DIR_FS_CATALOG.'/ext/modules/payment/twispay/helpers/Twispay_Subscriptions.php');
                         $sql_data_array = array_merge($sql_data_array, [
@@ -128,7 +128,7 @@ if (! class_exists('Oscommerce_Order')) :
                         'orders_custom_trial_price' => $subscription['products_custom_trial_price']
                       ]);
                     }
-                    /** Subscriptions */
+                    /** Subscriptions code END */
 
                     tep_db_perform(TABLE_ORDERS, $sql_data_array);
 
@@ -250,9 +250,10 @@ if (! class_exists('Oscommerce_Order')) :
          * @param int sendto: The order address id.
          * @param int billto: The order billing address id.
          * @param int transaction_id: The transaction id.
+         * @param int platform_id: The paymant platform id.
          *
          */
-        public static function commit($order_id=0, $sendto=0, $billto=0, $transaction_id=0)
+        public static function commit($order_id=0, $platform_id=0, $sendto=0, $billto=0, $transaction_id=0)
         {
             global $customer_id, $order, $order_totals, $languages_id, $payment, $currencies, $cart, $$payment;
             require_once(DIR_WS_CLASSES . 'language.php');
@@ -306,6 +307,10 @@ if (! class_exists('Oscommerce_Order')) :
 
                 // Update products_ordered (for bestsellers list)
                 tep_db_query("UPDATE " . TABLE_PRODUCTS . " SET `products_ordered` = `products_ordered` + " . sprintf('%d', $order->products[$i]['qty']) . " WHERE `products_id` = '" . tep_get_prid($order->products[$i]['id']) . "'");
+                // Update the order exeternal id
+                if($platform_id){
+                  tep_db_query("UPDATE " . TABLE_ORDERS . " SET `orders_custom_platform_id` = ". (int)$platform_id . " WHERE `orders_id` = '" . (int)$order_id . "'");
+                }
 
                 //------insert customer choosen option to order--------
                 $attributes_exist = '0';
@@ -424,11 +429,11 @@ if (! class_exists('Oscommerce_Order')) :
             if (!isset($check_status)) {
                 return $order_updated;
             }
-            /** If status is the same as the previous one return and $allow_samestatus_overwrite flag is true false*/
+            /** If status is the same as the previous one and $allow_samestatus_overwrite flag is true return false*/
             if (!$allow_samestatus_overwrite && $status == $check_status['orders_status']) {
                 return $order_updated;
             }
-            /** If status value is -1 then keep the current status valie */
+            /** If status value is -1 then keep the current status value */
             if ($status == -1) {
                 $status = $check_status['orders_status'];
             }
@@ -496,6 +501,24 @@ if (! class_exists('Oscommerce_Order')) :
 
             if (sizeof($order_info)) {
                 return $order_info;
+            } else {
+                return false;
+            }
+        }
+
+        /**
+         * Get the order plarform id by local order id
+         *
+         * @param int oID: The order id.
+         *
+         * @return int - The order platform id | false - if nothing found
+         */
+        public static function getOrderPlatformId($oID)
+        {
+            $order_info = tep_db_fetch_array(tep_db_query("select orders_custom_platform_id from " . TABLE_ORDERS . " WHERE orders_id = '". (int)$oID . "'"));
+
+            if (sizeof($order_info)) {
+                return $order_info['orders_custom_platform_id'];
             } else {
                 return false;
             }

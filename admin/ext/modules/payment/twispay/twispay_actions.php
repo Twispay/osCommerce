@@ -54,4 +54,12 @@ switch ($_POST['action']) {
         /** Call delete_unpaid method from Oscommerce_Order helper and print the response */
         echo json_encode(sprintf(MODULE_PAYMENT_TWISPAY_CLEAN_SUCCESS_TEXT, Oscommerce_Order::delete_unpaid()));
     break;
+
+    default:
+        if (empty($_POST['action'])) {
+          Twispay_Logger::api_log(ORDER_NO_ACTION_NOTICE_TEXT);
+        }else{
+          Twispay_Logger::api_log(ORDER_INVALID_ACTION_NOTICE_TEXT);
+        }
+    break;
 }

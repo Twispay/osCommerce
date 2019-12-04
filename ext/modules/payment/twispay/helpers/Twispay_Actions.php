@@ -38,8 +38,12 @@ if (! class_exists('Twispay_Actions')) :
             $transaction = Twispay_Transactions::getTransaction($trans_id);
             /** Total transaction amount*/
             $transaction['amount'] = floatval($transaction['amount']);
-            /** If the amount is not specified replace it with the total amount*/
-            $postAmount = isset($amount)?$amount:$transaction['amount'];
+            /** If the amount is not specified retunr false*/
+            if(isset($amount)){
+              $postAmount = $amount;
+            }else{
+              return false;
+            }
 
             /** Get the Private Key. */
             if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMODE == "True") {
@@ -104,10 +108,10 @@ if (! class_exists('Twispay_Actions')) :
         /**
          * Function that calls the cancel operation via Twispay API and update the local order based on the response.
          *
-         * @param string tw_order_id - The twispay order id of the transaction to be canceled
-         * @param string order_id - The local id of the order that needs to be canceled
+         * @param string twOrderId - The twispay order id of the transaction to be canceled
+         * @param string orderId - The local id of the order that needs to be canceled
          * @param string type - The operation type - 'Manual'|'Automatic'
-         * @param string initByAdmin - If the operation si called from one of the admin panel pages
+         * @param string initByAdmin - If the operation is called from one of the admin panel pages
          *
          * @return array([key => value]) - string 'status'          - Order status
          *                                 string 'message'         - API Message
@@ -152,21 +156,21 @@ if (! class_exists('Twispay_Actions')) :
             /** If success */
             if (($json->code == 200) && ($json->message == 'Success')) {
                 $data = ['status'          => Twispay_Status_Updater::$RESULT_STATUSES['CANCEL_OK']
-                      ,'message'         => MODULE_PAYMENT_TWISPAY_CANCEL_SUCCESS_TEXT
-                      ,'rawdata'         => $json
-                      ,'orderId'         => $twOrderId
-                      ,'externalOrderId' => $orderId
-                      ,'canceled'        => 1
-                      ];
+                        ,'message'         => MODULE_PAYMENT_TWISPAY_CANCEL_SUCCESS_TEXT
+                        ,'rawdata'         => $json
+                        ,'orderId'         => $twOrderId
+                        ,'externalOrderId' => $orderId
+                        ,'canceled'        => 1
+                        ];
                 Twispay_Status_Updater::updateStatus_IPN($data, 0);
             } else {
                 $data = ['status'          => 0
-                      ,'message'         => isset($json->error)?$json->error[0]->message:$json->message
-                      ,'rawdata'         => $json
-                      ,'orderId'         => $twOrderId
-                      ,'externalOrderId' => $orderId
-                      ,'canceled'        => 0
-                    ];
+                        ,'message'         => isset($json->error)?$json->error[0]->message:$json->message
+                        ,'rawdata'         => $json
+                        ,'orderId'         => $twOrderId
+                        ,'externalOrderId' => $orderId
+                        ,'canceled'        => 0
+                        ];
                 /** If operation is called from one of the admin page add a different notice from the one is called from a catalog page */
                 if ($initByAdmin) {
                     $data['status'].= MODULE_PAYMENT_TWISPAY_CHECK_NOTICE_ADMIN_TEXT;
@@ -194,10 +198,10 @@ if (! class_exists('Twispay_Actions')) :
 
             /** Get the Private Key. */
             if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMODE == "True") {
-                $baseUrl = 'https://api-stage.twispay.com/order?externalOrderId=__EXTERNAL_ORDER_ID__&orderType=recurring&page=1&perPage=1&reverseSorting=0';
+                $baseUrl = 'https://api-stage.twispay.com/order/__ORDER_ID__';
                 $secretKey = MODULE_PAYMENT_TWISPAY_STAGE_KEY;
             } else {
-                $baseUrl = 'https://api.twispay.com/order?externalOrderId=__EXTERNAL_ORDER_ID__&orderType=recurring&page=1&perPage=1&reverseSorting=0';
+                $baseUrl = 'https://api.twispay.com/order/__ORDER_ID__';
                 $secretKey = MODULE_PAYMENT_TWISPAY_LIVE_KEY;
             }
 
@@ -213,8 +217,10 @@ if (! class_exists('Twispay_Actions')) :
             }
             foreach ($subscriptions as $key => $subscription) {
 
-              /** Construct the URL. */
-                $url = str_replace('__EXTERNAL_ORDER_ID__', $subscription['orders_id'], $baseUrl);
+                /** Construct the URL. */
+                $orderPlatformId = Oscommerce_Order::getOrderPlatformId($subscription['orders_id']);
+
+                $url = str_replace('__ORDER_ID__', $orderPlatformId, $baseUrl);
 
                 /** Create a new cURL session. */
                 $ch = curl_init();
@@ -222,6 +228,7 @@ if (! class_exists('Twispay_Actions')) :
                 /** Set the URL and other needed fields. */
                 curl_setopt($ch, CURLOPT_URL, $url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
                 curl_setopt($ch, CURLOPT_HEADER, false);
                 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json', 'Authorization: ' . $secretKey]);
                 $response = curl_exec($ch);
@@ -248,10 +255,11 @@ if (! class_exists('Twispay_Actions')) :
                 }
 
                 if ('Success' == $json['message']) {
-                    $update_data = $json['data'][0];
+                    $update_data = $json['data'];
                     /** normalize the response */
                     $update_data['status'] = $update_data['orderStatus'];
-                    $update_data['orderId'] = Twispay_Transactions::getTwispayOrderId($subscription['orders_id']);
+                    $update_data['orderId'] = $orderPlatformId;
+
                     /** Update the local order status */
                     Twispay_Status_Updater::updateStatus_IPN($update_data, 0);
                     Twispay_Logger::api_log(SUBSCRIPTIONS_LOG_OK_SET_STATUS_TEXT . $subscription['orders_id']);

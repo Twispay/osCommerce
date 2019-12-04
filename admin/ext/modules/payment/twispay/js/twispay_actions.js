@@ -24,6 +24,11 @@ $(document).on('click', 'img.refund', function() {
   var total_amount = parseFloat(td.attr('data-trans-amount'));
   var input_amount = parseFloat(parent.find('input[name="amount"]').val());
 
+  if(isNaN(input_amount)){
+    alert(td.attr('data-amount-message'));
+    return false;
+  }
+
   if (input_amount > 0 && input_amount < total_amount) {
     var refund_amount = input_amount;
   } else if (input_amount >= total_amount || !parent.find('input[name="amount"]').val()) {
@@ -101,7 +106,7 @@ $(document).on('click', '.twispay-sync', function() {
       success: function(data) {
         /** if ajax call succeeded */
         if (data.status == 'Success') {
-          alert('Successful synced! - ' + data.synced + ' orders');
+          alert($(that).attr('data-success-message') + ' - ' + data.synced + ' orders');
           buttonDefaultState($(that));
           window.location.reload();
         } else {

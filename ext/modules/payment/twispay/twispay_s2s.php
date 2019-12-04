@@ -74,7 +74,7 @@ if (!empty($_POST)) {
     }
 
     /** Extract the status received from server. */
-    Oscommerce_Order::commit($order_id, $decrypted['custom']['sendTo'], $decrypted['custom']['billTo']);
+    Oscommerce_Order::commit($order_id, $decrypted['orderId'], $decrypted['custom']['sendTo'], $decrypted['custom']['billTo']);
 
     $status = Twispay_Status_Updater::updateStatus_IPN($decrypted);
     $orderValidation['completed'] = $status['success'];
@@ -86,7 +86,7 @@ if (!empty($_POST)) {
     if ($status['success']) {
         die("OK");
     } else {
-        die();
+        die("Internal processing failure");
     }
 } else {
     Twispay_Logger::log(NO_POST_TEXT);

@@ -40,6 +40,7 @@ define('MODULE_PAYMENT_TWISPAY_CANCEL_SUCCESS_TEXT', 'Successfully canceled');
 define('MODULE_PAYMENT_TWISPAY_REFUND_NOTICE_TEXT', 'Are you sure you want to Refund Transaction #%s? Process is not reversible!');
 define('MODULE_PAYMENT_TWISPAY_CANCEL_SUBSCRIPTION_NOTICE_TEXT', 'Are you sure you want to Cancel Subscription? Process is not reversible!');
 define('MODULE_PAYMENT_TWISPAY_SYNC_NOTICE_TEXT', 'Are you sure you want to Sync All Orders?');
+define('MODULE_PAYMENT_TWISPAY_SYNC_SUCCESS_TEXT', 'Successful synced!');
 define('MODULE_PAYMENT_TWISPAY_CHECK_NOTICE_ADMIN_TEXT', ' Please check the issue on Twispay admin panel.');
 define('MODULE_PAYMENT_TWISPAY_CHECK_NOTICE_CUSTOMER_TEXT', ' Please contact the website administrator.');
 
@@ -104,6 +105,9 @@ define('ORDER_REFUND_REQUESTED_NOTICE_TEXT','Twispay refund was requested for tr
 define('ORDER_REFUNDED_REQUESTED_NOTICE_TEXT','Twispay refund requested');
 define('ORDER_PAID_NOTICE_TEXT','Paid Twispay #');
 define('ORDER_CANCELED_NOTICE_TEXT','Twispay payment was canceled');
+define('ORDER_NO_ACTION_NOTICE_TEXT','The action parameter is not defined.');
+define('ORDER_INVLID_ACTION_NOTICE_TEXT','The specified action is not valid.');
+
 
 /* LOG insertor */
 define('LOG_REFUND_RESPONSE_TEXT','[RESPONSE]: Refund operation data: ');
