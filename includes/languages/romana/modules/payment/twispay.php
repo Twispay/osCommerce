@@ -40,6 +40,7 @@ define('MODULE_PAYMENT_TWISPAY_CANCEL_SUCCESS_TEXT', 'Anularea s-a efectuat cu s
 define('MODULE_PAYMENT_TWISPAY_REFUND_NOTICE_TEXT', 'Sunteti sigur ca doriti rambursarea tranzactiei %s? Procesul este ireversibil!');
 define('MODULE_PAYMENT_TWISPAY_CANCEL_SUBSCRIPTION_NOTICE_TEXT', 'Sunteti sigur ca doriti inchiderea abonamentului? Procesul este ireversibil!');
 define('MODULE_PAYMENT_TWISPAY_SYNC_NOTICE_TEXT', 'Sunteti sigur ca doriti actualizarea comenzilor?');
+define('MODULE_PAYMENT_TWISPAY_SYNC_SUCCESS_TEXT', 'Sincronizare cu success!');
 define('MODULE_PAYMENT_TWISPAY_CHECK_NOTICE_ADMIN_TEXT', ' Va rugam verificati aceasta problema in panoul de administrare Twispay.');
 define('MODULE_PAYMENT_TWISPAY_CHECK_NOTICE_CUSTOMER_TEXT', ' Va rugam contactati administratorul site-ului.');
 define('MODULE_PAYMENT_TWISPAY_REFUND_AMOUNT_NOTICE_TEXT', 'Valoare introdusa nu este valida!');
