@@ -73,7 +73,7 @@ if (! class_exists('Twispay_Actions')) :
                 Twispay_Logger::api_log(JSON_DECODE_ERROR_TEXT);
             }
 
-            if (($json->code == 200) && ($json->message == 'Success')) {
+            if ((NULL !== $json) && (200 == $json->code) && ('Success' == $json->message)) {
                 $data = ['message'         => MODULE_PAYMENT_TWISPAY_REFUND_SUCCESS_TEXT
                         ,'rawdata'         => $json
                         ,'transactionId'   => $trans_id
@@ -154,7 +154,7 @@ if (! class_exists('Twispay_Actions')) :
             }
 
             /** If success */
-            if (($json->code == 200) && ($json->message == 'Success')) {
+            if ((NULL !== $json) && (200 == $json->code) && ('Success' == $json->message)) {
                 $data = ['status'          => Twispay_Status_Updater::$RESULT_STATUSES['CANCEL_OK']
                         ,'message'         => MODULE_PAYMENT_TWISPAY_CANCEL_SUCCESS_TEXT
                         ,'rawdata'         => $json
@@ -253,8 +253,7 @@ if (! class_exists('Twispay_Actions')) :
                     Twispay_Logger::api_log(SUBSCRIPTIONS_LOG_ERROR_ORDER_NOT_FOUND_TEXT . $subscription['orders_id']);
                     continue;
                 }
-
-                if ('Success' == $json['message']) {
+                if ((NULL !== $json) && (200 == $json['code']) && ('Success' == $json['message'])) {
                     $update_data = $json['data'];
                     /** normalize the response */
                     $update_data['status'] = $update_data['orderStatus'];
