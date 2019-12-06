@@ -208,7 +208,7 @@ Changelog
 
 = 1.0.0 =
 * Initial Plugin version
-
-<!-- Other Notes
-================
--->
+* Merchant config interface
+* Integration with Twispay's Secure Hosted Payment Page
+* Listening URL which accepts the server’s Instant Payment Notifications
+* Replaced FORM used for server notification with JSON
