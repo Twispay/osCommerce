@@ -1,0 +1,96 @@
+/**
+ * @author   Twispay
+ * @version  1.0.1
+ */
+*:disabled, .disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+a.twispay-clean, a.twispay-logs, a.twispay-sync {
+  line-height: 150%;
+  color: #eb8e36;
+  font-size: 16px;
+}
+
+form[action*="module=twispay"] td.infoBoxContent {
+  line-height: 160%;
+}
+
+#contentTwispay {
+  margin-left: 20px;
+  padding-right: 20px;
+}
+
+.big-border {
+  border-right: 4px solid #a7a7a7;
+}
+
+i.refund {
+  font-size: 20px;
+}
+
+table.twispay-logs tr:nth-child(even) td {
+  background-color: #ffffff;
+}
+
+table.twispay-logs tr:nth-child(odd) td {
+  background-color: #f5f5f5;
+}
+
+table.twispay-logs td {
+  text-align: center;
+  padding: 4px;
+}
+
+table.twispay-logs th {
+  text-align: center;
+  padding: 4px;
+}
+
+.red {
+  color: #dd0000;
+  cursor: pointer;
+  position: relative;
+  top: 4px;
+}
+
+i.refund {
+  background-image: url("images/icons/cross.gif");
+}
+
+div#contentTwispay div.twispay-pagination, div#contentTwispay div.trans-filter {
+  text-align: right;
+  padding: 20px;
+}
+
+.sortable {
+  color: #1e91cf;
+  cursor: pointer;
+}
+
+.sortable:hover, .sortable:focus {
+  color: #14628c;
+}
+
+.sortable.asc::after, .sortable.desc::after {
+  content: '';
+  position: relative;
+  display: inline-block;
+  border: solid #1e91cf;
+  border-width: 0 2px 2px 0;
+  padding: 3px;
+  margin-left: 5px;
+}
+
+.sortable.desc::after {
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+  top: -2px;
+}
+
+.sortable.asc::after {
+  transform: rotate(-135deg);
+  -webkit-transform: rotate(-135deg);
+  top: 2px;
+}
