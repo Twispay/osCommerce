@@ -28,14 +28,14 @@ if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMO
 /** Check if there is NO secret key. */
 if ('' == $secretKey) {
     Twispay_Logger::log(LOG_ERROR_INVALID_PRIVATE_TEXT);
-    die();
+    die(LOG_ERROR_INVALID_PRIVATE_TEXT);
 }
 
 if (!empty($_POST)) {
     /** Check if the POST is corrupted: Doesn't contain the 'opensslResult' and the 'result' fields. */
     if (((false == isset($_POST['opensslResult'])) && (false == isset($_POST['result'])))) {
         Twispay_Logger::log(LOG_ERROR_EMPTY_RESPONSE_TEXT);
-        die();
+        die(LOG_ERROR_EMPTY_RESPONSE_TEXT);
     }
 
     /** Extract the server response and decrypt it. */
@@ -44,7 +44,7 @@ if (!empty($_POST)) {
     /** Check if decryption failed.  */
     if (false === $decrypted) {
         Twispay_Logger::log(LOG_ERROR_DECRYPTION_ERROR_TEXT);
-        die();
+        die(LOG_ERROR_DECRYPTION_ERROR_TEXT);
     } else {
         Twispay_Logger::log(LOG_OK_STRING_DECRYPTED_TEXT. json_encode($decrypted));
     }
@@ -52,14 +52,14 @@ if (!empty($_POST)) {
     /** Check if transaction already exist */
     if (Twispay_Transactions::checkTransaction($decrypted['transactionId']) != false) {
         Twispay_Logger::log(LOG_ERROR_TRANSACTION_EXIST_TEXT . $decrypted['transactionId']);
-        die();
+        die("OK");
     }
 
     /** Validate the decrypted response. */
     $orderValidation = Twispay_Response::checkValidation($decrypted);
     if (false == $orderValidation) {
         Twispay_Logger::log(LOG_ERROR_VALIDATING_FAILED_TEXT);
-        die();
+        die(LOG_ERROR_VALIDATING_FAILED_TEXT);
     }
 
     /** Extract the order. */
@@ -70,7 +70,7 @@ if (!empty($_POST)) {
     if (empty(tep_db_num_rows($order_query))) {
         Twispay_Logger::log(LOG_ERROR_INVALID_ORDER_TEXT);
         Twispay_Notification::notice_to_cart();
-        die();
+        die(LOG_ERROR_INVALID_ORDER_TEXT);
     }
 
     /** Extract the status received from server. */
@@ -90,5 +90,5 @@ if (!empty($_POST)) {
     }
 } else {
     Twispay_Logger::log(NO_POST_TEXT);
-    die();
+    die(NO_POST_TEXT);
 }

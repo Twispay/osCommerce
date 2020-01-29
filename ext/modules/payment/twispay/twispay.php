@@ -31,7 +31,6 @@ if (defined("MODULE_PAYMENT_TWISPAY_TESTMODE") &&  MODULE_PAYMENT_TWISPAY_TESTMO
 if ('' == $secretKey) {
     Twispay_Logger::log(LOG_ERROR_INVALID_PRIVATE_TEXT);
     Twispay_Notification::print_notice();
-    die();
 }
 
 if (!empty($_POST)) {
@@ -42,7 +41,6 @@ if (!empty($_POST)) {
     if (((false == isset($_POST['opensslResult'])) && (false == isset($_POST['result'])))) {
         Twispay_Logger::log(LOG_ERROR_EMPTY_RESPONSE_TEXT);
         Twispay_Notification::print_notice();
-        die();
     }
 
     /** Extract the server response and decrypt it. */
@@ -52,7 +50,6 @@ if (!empty($_POST)) {
     if (false === $decrypted) {
         Twispay_Logger::log(LOG_ERROR_DECRYPTION_ERROR_TEXT);
         Twispay_Notification::print_notice();
-        die();
     } else {
         Twispay_Logger::log(LOG_OK_STRING_DECRYPTED_TEXT. json_encode($decrypted));
     }
@@ -68,7 +65,6 @@ if (!empty($_POST)) {
             /** If transaction failed show notice */
             Twispay_Notification::print_notice();
         }
-        die();
     }
 
     /** Validate the decrypted response. */
@@ -76,7 +72,6 @@ if (!empty($_POST)) {
     if (false == $orderValidation) {
         Twispay_Logger::log(LOG_ERROR_VALIDATING_FAILED_TEXT);
         Twispay_Notification::print_notice();
-        die();
     }
 
     /** Extract the order. */
@@ -87,7 +82,6 @@ if (!empty($_POST)) {
     if (empty(tep_db_num_rows($order_query))) {
         Twispay_Logger::log(LOG_ERROR_INVALID_ORDER_TEXT);
         Twispay_Notification::print_notice();
-        die();
     }
 
     /** Extract the status received from server. */
@@ -109,6 +103,4 @@ if (!empty($_POST)) {
     }
 } else {
     Twispay_Logger::log(NO_POST_TEXT);
-    Twispay_Notification::print_notice(NO_POST_TEXT);
-    die();
-}
+    Twispay_Notification::print_notice(NO_POST_TEXT);}
