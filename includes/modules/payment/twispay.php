@@ -586,7 +586,7 @@ class twispay
                 $_errors[] = sprintf('Order #%s not found',$order_id);
             }
         }
-        if(empty($json->status) && empty($json->transactionStatus)) {
+        if(empty($json->transactionStatus)) {
             $_errors[] = 'Empty status';
         }
         if(empty($json->amount)) {
@@ -604,8 +604,8 @@ class twispay
         if(empty($json->transactionId)) {
             $_errors[] = 'Empty transactionId';
         }
-        if(empty($json->transactionKind) && empty($json->transactionMethod)) {
-            $_errors[] = 'Empty transactionKind';
+        if(empty($json->transactionMethod)) {
+            $_errors[] = 'Empty transactionMethod';
         }
 
         if(sizeof($_errors)) {
@@ -621,14 +621,14 @@ class twispay
             $data = array(
                 'invoice' => '',
                 'order_id' => $order_id,
-                'status' => (empty($json->status)) ? $json->transactionStatus : $json->status,
+                'status' => $json->transactionStatus,
                 'amount' => (float)$json->amount,
                 'currency' => $json->currency,
                 'identifier' => $json->identifier,
                 'orderId' => (int)$json->orderId,
                 'transactionId' => (int)$json->transactionId,
                 'customerId' => (int)$json->customerId,
-                'transactionKind' => (empty($json->transactionKind)) ? $json->transactionMethod : $json->transactionKind,
+                'transactionKind' => $json->transactionMethod,
                 'cardId' => (!empty($json->cardId)) ? (int)$json->cardId : 0,
                 'timestamp' => (is_object($json->timestamp)) ? time() : $json->timestamp,
                 'sendto'    => (int)$json->custom->sendTo,
@@ -638,8 +638,7 @@ class twispay
             $this->twispay_log('[RESPONSE] Data: '.json_encode($data));
             if(!in_array($data['status'], $this->getResultStatuses())) {
                 $wrong_status['status'] = $data['status'];
-                $wrong_status['message'] = $json->message;
-                $wrong_status['code'] = $json->code;
+
                 $this->twispay_log(sprintf($this->tl('[RESPONSE-ERROR] Wrong status (%s)'), json_encode($wrong_status)));
                 $this->twispay_log();
 
