@@ -21,8 +21,8 @@ class twispay
     {
         global $order;
 
-        $this->signature = 'twispay|twispay|1.0|1.0';
-        $this->api_version = '1.0';
+        $this->signature = 'twispay|twispay|1.1|1.1';
+        $this->api_version = '1.1';
         $this->code = 'twispay';
         $this->title = MODULE_PAYMENT_TWISPAY_TEXT_TITLE;
         $this->public_title = MODULE_PAYMENT_TWISPAY_TEXT_PUBLIC_TITLE;
